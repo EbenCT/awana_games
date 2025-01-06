@@ -1,3 +1,4 @@
+// lib/widgets/common/score_card.dart
 import 'package:flutter/material.dart';
 import '../../models/team.dart';
 
@@ -5,8 +6,9 @@ class ScoreCard extends StatelessWidget {
   final Team team;
   final bool showRoundPoints;
   final Function(int)? onPointsChanged;
-  final bool isSelected; // Nuevo parámetro
-  final Function(bool)? onSelected; // Nuevo parámetro
+  final bool isSelected;
+  final Function(bool)? onSelected;
+  final int currentGameScore;  // New parameter
 
   const ScoreCard({
     Key? key,
@@ -15,6 +17,7 @@ class ScoreCard extends StatelessWidget {
     this.onPointsChanged,
     this.isSelected = false,
     this.onSelected,
+    this.currentGameScore = 0,  // Default value
   }) : super(key: key);
 
   @override
@@ -78,7 +81,7 @@ class ScoreCard extends StatelessWidget {
                         : null,
                   ),
                   Text(
-                    '${team.totalScore}',
+                    '$currentGameScore',  // Show current game score instead of total
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
