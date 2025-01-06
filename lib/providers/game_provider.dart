@@ -1,7 +1,6 @@
 // lib/providers/game_provider.dart
 import 'package:flutter/foundation.dart';
 import '../models/game.dart';
-import '../models/team.dart';
 
 class GameProvider extends ChangeNotifier {
   List<Game> _games = [];

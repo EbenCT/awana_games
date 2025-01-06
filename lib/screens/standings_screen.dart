@@ -1,7 +1,7 @@
-// lib/screens/standings_screen.dart
 import 'package:flutter/material.dart';
 import '../models/team.dart';
 import '../models/game.dart';
+import '../config/constants.dart';
 
 class StandingsScreen extends StatefulWidget {
   const StandingsScreen({Key? key}) : super(key: key);
@@ -13,7 +13,7 @@ class StandingsScreen extends StatefulWidget {
 class _StandingsScreenState extends State<StandingsScreen> {
   late List<Game> games;
   late List<Team> teams;
-  int currentGameIndex = 2; // Índice del juego actual
+  int currentGameIndex = 2;
 
   @override
   void initState() {
@@ -31,31 +31,41 @@ class _StandingsScreenState extends State<StandingsScreen> {
         id: 1,
         name: 'Rojo',
         teamColor: Colors.red,
-        totalScore: 275,
+        totalScore: 0,
         gameScores: [100, 75, null, null, null],
       ),
       Team(
         id: 2,
         name: 'Amarillo',
         teamColor: Colors.amber,
-        totalScore: 200,
+        totalScore: 0,
         gameScores: [75, 50, null, null, null],
       ),
       Team(
         id: 3,
         name: 'Verde',
         teamColor: Colors.green,
-        totalScore: 150,
+        totalScore: 0,
         gameScores: [50, 75, null, null, null],
       ),
       Team(
         id: 4,
         name: 'Azul',
         teamColor: Colors.blue,
-        totalScore: 125,
+        totalScore: 0,
         gameScores: [25, 25, null, null, null],
       ),
     ];
+
+    _calculateTotals();
+  }
+
+  void _calculateTotals() {
+    for (var team in teams) {
+      team.totalScore = team.gameScores
+          .where((score) => score != null)
+          .fold(0, (sum, score) => sum + (score ?? 0));
+    }
   }
 
   @override
@@ -67,7 +77,6 @@ class _StandingsScreenState extends State<StandingsScreen> {
       body: Column(
         children: [
           _buildGameNavigator(),
-          _buildGameProgress(),
           Expanded(
             child: _buildStandingsTable(),
           ),
@@ -117,121 +126,101 @@ class _StandingsScreenState extends State<StandingsScreen> {
     );
   }
 
-  Widget _buildGameProgress() {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: games.length,
-        itemBuilder: (context, index) {
-          final game = games[index];
-          return Container(
-            width: 120,
-            margin: const EdgeInsets.only(right: 8.0),
-            decoration: BoxDecoration(
-              color: game.isCurrent
-                  ? Colors.purple[100]
-                  : Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-              border: game.isCurrent
-                  ? Border.all(color: Colors.purple, width: 2)
-                  : null,
-            ),
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  game.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                Text(
-                  game.isCompleted
-                      ? 'Completado'
-                      : game.isCurrent
-                          ? 'En Curso'
-                          : 'Pendiente',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildStandingsTable() {
     final sortedTeams = List<Team>.from(teams)
       ..sort((a, b) => b.totalScore.compareTo(a.totalScore));
+
+    final List<DataRow> dataRows = [
+      for (int i = 0; i < AppConstants.totalGames; i++)
+        DataRow(
+          cells: [
+            DataCell(SizedBox(
+              width: 60, // Ajusta el ancho mínimo de la celda
+              child: Text(
+                'Juego ${i + 1}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            )),
+            ...sortedTeams.map((team) => DataCell(
+                  Container(
+                    width: 60, // Ajusta el ancho de las celdas de equipos
+                    color: team.teamColor.withOpacity(0.2),
+                    alignment: Alignment.center,
+                    child: Text(
+                      team.gameScores[i]?.toString() ?? '-',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                )),
+          ],
+        ),
+      DataRow(
+        cells: [
+          const DataCell(Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
+          ...sortedTeams.map((team) => DataCell(
+                Container(
+                  width: 60,
+                  color: team.teamColor.withOpacity(0.4),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${team.totalScore}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              )),
+        ],
+      ),
+      DataRow(
+        cells: [
+          const DataCell(Text('Pos', style: TextStyle(fontWeight: FontWeight.bold))),
+          ...sortedTeams.asMap().entries.map((entry) {
+            final index = entry.key;
+            final team = entry.value;
+            return DataCell(
+              Container(
+                width: 60,
+                color: team.teamColor.withOpacity(0.6),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}°',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    ];
 
     return Card(
       margin: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          columnSpacing: 10.0, // Reducir espacio entre columnas
+          headingRowHeight: 40.0, // Reducir altura de las filas de encabezado
+          dataRowHeight: 40.0, // Reducir altura de las filas de datos
           columns: [
-            const DataColumn(label: Text('Pos')),
-            const DataColumn(label: Text('Equipo')),
-            ...List.generate(
-              games.length,
-              (index) => DataColumn(
-                label: Text('Juego ${index + 1}'),
-              ),
-            ),
-            const DataColumn(label: Text('Total')),
-          ],
-          rows: sortedTeams.asMap().entries.map((entry) {
-            final index = entry.key;
-            final team = entry.value;
-            return DataRow(
-              cells: [
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (index == 0) 
-                        const Icon(Icons.emoji_events, color: Colors.amber, size: 20),
-                      Text('${index + 1}°'),
-                    ],
-                  ),
-                ),
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: team.teamColor,
-                          shape: BoxShape.circle,
+            const DataColumn(label: Text('')),
+            ...sortedTeams.map((team) => DataColumn(
+                  label: Container(
+                    width: 60,
+                    color: team.teamColor.withOpacity(0.8),
+                    padding: const EdgeInsets.all(4.0),
+                    child: Center(
+                      child: Text(
+                        team.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(team.name),
-                    ],
+                    ),
                   ),
-                ),
-                ...team.gameScores.map((score) => DataCell(
-                  Text(score?.toString() ?? '-'),
                 )),
-                DataCell(
-                  Text(
-                    '${team.totalScore}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
+          ],
+          rows: dataRows,
         ),
       ),
     );
