@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
-import '../widgets/common/primary_button.dart';
 import '../config/constants.dart';
+import '../widgets/common/primary_button.dart';
+import 'package:provider/provider.dart';
+import '../providers/game_provider.dart';
+import '../providers/teams_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
+
     return Scaffold(
       body: Stack(
         children: [
@@ -98,7 +105,17 @@ class HomeScreen extends StatelessWidget {
             bottom: 32,
             child: PrimaryButton(
               text: 'Iniciar Juego',
-              onPressed: () => Navigator.pushNamed(context, '/score'),
+              onPressed: () {
+                // Reiniciar equipos y juegos
+                teamsProvider.resetScores();
+                gameProvider.resetGames();
+
+                // Crear el primer juego
+                gameProvider.addGame();
+
+                // Navegar a la tabla de posiciones
+                Navigator.pushNamed(context, '/score');
+              },
               backgroundColor: const Color.fromARGB(255, 255, 255, 255),
               fullWidth: true,
             ),

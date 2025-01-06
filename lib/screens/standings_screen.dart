@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/team.dart';
 import '../models/game.dart';
-import '../config/constants.dart';
+import '../providers/teams_provider.dart';
+import '../providers/game_provider.dart';
 
 class StandingsScreen extends StatefulWidget {
   const StandingsScreen({Key? key}) : super(key: key);
@@ -11,81 +13,32 @@ class StandingsScreen extends StatefulWidget {
 }
 
 class _StandingsScreenState extends State<StandingsScreen> {
-  late List<Game> games;
-  late List<Team> teams;
-  int currentGameIndex = 2;
-
-  @override
-  void initState() {
-    super.initState();
-    games = [
-      Game(id: 1, name: 'Tumbando el Pin', type: GameType.rounds, isCompleted: true),
-      Game(id: 2, name: 'Carrera de Relevos', type: GameType.normal, isCompleted: true),
-      Game(id: 3, name: 'Juego de Memoria', type: GameType.normal, isCurrent: true),
-      Game(id: 4, name: 'Búsqueda del Tesoro', type: GameType.normal),
-      Game(id: 5, name: 'Competencia Final', type: GameType.rounds),
-    ];
-
-    teams = [
-      Team(
-        id: 1,
-        name: 'Rojo',
-        teamColor: Colors.red,
-        totalScore: 0,
-        gameScores: [100, 75, null, null, null],
-      ),
-      Team(
-        id: 2,
-        name: 'Amarillo',
-        teamColor: Colors.amber,
-        totalScore: 0,
-        gameScores: [75, 50, null, null, null],
-      ),
-      Team(
-        id: 3,
-        name: 'Verde',
-        teamColor: Colors.green,
-        totalScore: 0,
-        gameScores: [50, 75, null, null, null],
-      ),
-      Team(
-        id: 4,
-        name: 'Azul',
-        teamColor: Colors.blue,
-        totalScore: 0,
-        gameScores: [25, 25, null, null, null],
-      ),
-    ];
-
-    _calculateTotals();
-  }
-
-  void _calculateTotals() {
-    for (var team in teams) {
-      team.totalScore = team.gameScores
-          .where((score) => score != null)
-          .fold(0, (sum, score) => sum + (score ?? 0));
-    }
-  }
+  int currentGameIndex = 0;
 
   @override
   Widget build(BuildContext context) {
+    final teamsProvider = Provider.of<TeamsProvider>(context);
+    final gameProvider = Provider.of<GameProvider>(context);
+
+    final games = gameProvider.games;
+    final teams = teamsProvider.teams;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tabla de Posiciones'),
       ),
       body: Column(
         children: [
-          _buildGameNavigator(),
+          _buildGameNavigator(games),
           Expanded(
-            child: _buildStandingsTable(),
+            child: _buildStandingsTable(games, teams),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGameNavigator() {
+  Widget _buildGameNavigator(List<Game> games) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Row(
@@ -107,7 +60,7 @@ class _StandingsScreenState extends State<StandingsScreen> {
                 ),
               ),
               Text(
-                games[currentGameIndex].name,
+                games.isNotEmpty ? games[currentGameIndex].name : 'Ningún Juego',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -126,16 +79,16 @@ class _StandingsScreenState extends State<StandingsScreen> {
     );
   }
 
-  Widget _buildStandingsTable() {
+  Widget _buildStandingsTable(List<Game> games, List<Team> teams) {
     final sortedTeams = List<Team>.from(teams)
       ..sort((a, b) => b.totalScore.compareTo(a.totalScore));
 
     final List<DataRow> dataRows = [
-      for (int i = 0; i < AppConstants.totalGames; i++)
+      for (int i = 0; i < games.length; i++)
         DataRow(
           cells: [
             DataCell(SizedBox(
-              width: 60, // Ajusta el ancho mínimo de la celda
+              width: 60,
               child: Text(
                 'Juego ${i + 1}',
                 textAlign: TextAlign.center,
@@ -144,11 +97,13 @@ class _StandingsScreenState extends State<StandingsScreen> {
             )),
             ...sortedTeams.map((team) => DataCell(
                   Container(
-                    width: 60, // Ajusta el ancho de las celdas de equipos
+                    width: 60,
                     color: team.teamColor.withOpacity(0.2),
                     alignment: Alignment.center,
                     child: Text(
-                      team.gameScores[i]?.toString() ?? '-',
+                      team.gameScores.length > i
+                          ? (team.gameScores[i]?.toString() ?? '-')
+                          : '-',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -198,9 +153,9 @@ class _StandingsScreenState extends State<StandingsScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          columnSpacing: 10.0, // Reducir espacio entre columnas
-          headingRowHeight: 40.0, // Reducir altura de las filas de encabezado
-          dataRowHeight: 40.0, // Reducir altura de las filas de datos
+          columnSpacing: 10.0,
+          headingRowHeight: 40.0,
+          dataRowHeight: 40.0,
           columns: [
             const DataColumn(label: Text('')),
             ...sortedTeams.map((team) => DataColumn(

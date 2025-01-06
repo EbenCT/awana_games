@@ -1,4 +1,3 @@
-// lib/widgets/common/score_card.dart
 import 'package:flutter/material.dart';
 import '../../models/team.dart';
 
@@ -6,12 +5,16 @@ class ScoreCard extends StatelessWidget {
   final Team team;
   final bool showRoundPoints;
   final Function(int)? onPointsChanged;
+  final bool isSelected; // Nuevo parámetro
+  final Function(bool)? onSelected; // Nuevo parámetro
 
   const ScoreCard({
     Key? key,
     required this.team,
     this.showRoundPoints = false,
     this.onPointsChanged,
+    this.isSelected = false,
+    this.onSelected,
   }) : super(key: key);
 
   @override
@@ -66,13 +69,23 @@ class ScoreCard extends StatelessWidget {
                 ),
               )
             else
-              Text(
-                '${team.totalScore}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: onSelected != null
+                        ? (value) => onSelected?.call(value ?? false)
+                        : null,
+                  ),
+                  Text(
+                    '${team.totalScore}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
