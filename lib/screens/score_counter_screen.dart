@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game.dart';
+import '../models/team.dart';
 import '../widgets/common/score_card.dart';
 import '../widgets/common/primary_button.dart';
 import '../widgets/score_counter/game_type_selector.dart';
@@ -22,6 +23,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   List<int> selectedTeams = [];
   List<int> assignedTeams = [];
   bool allTeamsAssigned = false;
+  bool roundCalculated = false;
   Map<int, int> currentGameScores = {};  // New map to track current game scores
 
   @override
@@ -152,12 +154,47 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       selectedTeams.clear();
       assignedTeams.clear();
       allTeamsAssigned = false;
+      roundCalculated = false; 
       // Resetear puntajes del juego actual
       currentGameScores.clear();
       final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
       for (var team in teams) {
         currentGameScores[team.id] = 0;
+
+        // Resetear los puntos de ronda para cada equipo
+        Provider.of<TeamsProvider>(context, listen: false)
+            .updateTeamRoundPoints(team.id, 0);
       }
+    });
+  }
+
+  void _calculateRoundResults(TeamsProvider teamsProvider) {
+    // Ordenar equipos por puntuación actual
+    final List<Team> sortedTeams = List.from(teamsProvider.teams)
+      ..sort((a, b) => b.roundPoints.compareTo(a.roundPoints));
+
+    int currentRank = 1;
+    int currentScore = sortedTeams[0].roundPoints;
+    Map<int, int> pointsForRank = {1: 100, 2: 75, 3: 50, 4: 25};
+
+    for (int i = 0; i < sortedTeams.length; i++) {
+      if (sortedTeams[i].roundPoints < currentScore) {
+        currentRank = i + 1;
+        currentScore = sortedTeams[i].roundPoints;
+      }
+      
+      final points = pointsForRank[currentRank] ?? 25;
+      _updateCurrentGameScore(sortedTeams[i].id, points);
+      teamsProvider.updateScore(
+        sortedTeams[i].id,
+        teamsProvider.teams.length - 1,
+        points
+      );
+    }
+
+    setState(() {
+      roundCalculated = true;
+      allTeamsAssigned = true;
     });
   }
 
@@ -211,14 +248,18 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: ScoreCard(
                       team: team,
-                      showRoundPoints: activeGameType == GameType.rounds,
-                      onPointsChanged: activeGameType == GameType.rounds
-                          ? (change) => teamsProvider.updateTeamRoundPoints(team.id, change)
+                      showRoundPoints: activeGameType == GameType.rounds && !roundCalculated,
+                      onPointsChanged: activeGameType == GameType.rounds && !roundCalculated
+                          ? (change) {
+                            final newPoints = team.roundPoints + change;
+                            if (newPoints >= 0) {
+                              teamsProvider.updateTeamRoundPoints(team.id, newPoints);
+                            }
+                          }
                           : null,
-                      isSelected: selectedTeams.contains(team.id),
-                      onSelected: isDisabled
-                          ? null
-                          : (isSelected) {
+                  isSelected: activeGameType == GameType.normal ? selectedTeams.contains(team.id) : false,
+                  onSelected: (activeGameType == GameType.normal && !isDisabled)
+                          ? (isSelected) {
                               setState(() {
                                 if (isSelected) {
                                   selectedTeams.add(team.id);
@@ -226,12 +267,13 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                                   selectedTeams.remove(team.id);
                                 }
                               });
-                            },
+                            }
+                            : null,
                       currentGameScore: currentGameScores[team.id] ?? 0,  // Add current game score
                     ),
                   );
                 }),
-                if (activeGameType == GameType.rounds) ...[
+                if (activeGameType == GameType.rounds && !roundCalculated) ...[
                   const SizedBox(height: 16),
                   NumberGrid(
                     selectedNumbers: selectedNumbers,
@@ -257,6 +299,15 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                     onPressed: selectedTeams.isNotEmpty && !allTeamsAssigned
                         ? () => _assignPoints(teamsProvider)
                         : (){},
+                    backgroundColor: Colors.green,
+                  ),
+                ),
+              if (activeGameType == GameType.rounds && !roundCalculated)
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    text: 'Calcular Resultado',
+                    onPressed: () => _calculateRoundResults(teamsProvider),
                     backgroundColor: Colors.green,
                   ),
                 ),

@@ -36,10 +36,10 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Expanded(
-                      child: Container(color: Colors.yellow[600]),
+                      child: Container(color: Colors.green[600]),
                     ),
                     Expanded(
-                      child: Container(color: Colors.green[600]),
+                      child: Container(color: Colors.yellow[600]),
                     ),
                   ],
                 ),
