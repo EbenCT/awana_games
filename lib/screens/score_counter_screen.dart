@@ -79,7 +79,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           // Si hay 3 equipos en primer lugar
           for (var teamId in selectedTeams) {
             _updateCurrentGameScore(teamId, points);
-            teamsProvider.updateScore(teamId, teamsProvider.teams.length - 1, points);
+            final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
+            teamsProvider.updateScore(teamId, gameIndex, points);
             assignedTeams.add(teamId);
           }
           
@@ -107,7 +108,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     // Asignar puntos a los equipos seleccionados
     for (var teamId in selectedTeams) {
       _updateCurrentGameScore(teamId, points);
-      teamsProvider.updateScore(teamId, teamsProvider.teams.length - 1, points);
+      final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
+      teamsProvider.updateScore(teamId, gameIndex, points);
       assignedTeams.add(teamId);
     }
 
@@ -118,7 +120,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     if (currentStage == 2 && remainingTeams.length == 1) {
       // Si solo queda un equipo después de asignar el segundo lugar
       _updateCurrentGameScore(remainingTeams.first.id, 50);
-      teamsProvider.updateScore(remainingTeams.first.id, teamsProvider.teams.length - 1, 50);
+      final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
+      teamsProvider.updateScore(remainingTeams.first.id, gameIndex, 50);
       assignedTeams.add(remainingTeams.first.id);
       setState(() {
         allTeamsAssigned = true;
@@ -126,7 +129,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     } else if (currentStage == 3 || (currentStage == 2 && remainingTeams.length == 1)) {
       if (remainingTeams.length == 1) {
         _updateCurrentGameScore(remainingTeams.first.id, 25);
-        teamsProvider.updateScore(remainingTeams.first.id, teamsProvider.teams.length - 1, 25);
+        final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
+        teamsProvider.updateScore(remainingTeams.first.id, gameIndex, 25);
         assignedTeams.add(remainingTeams.first.id);
       }
     }
@@ -168,7 +172,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   });
 }
 
-  void _calculateRoundResults(TeamsProvider teamsProvider) {
+  void _calculateRoundResults(TeamsProvider teamsProvider, GameProvider gameProvider) {
     // Ordenar equipos por puntuación actual
     final List<Team> sortedTeams = List.from(teamsProvider.teams)
       ..sort((a, b) => b.roundPoints.compareTo(a.roundPoints));
@@ -176,6 +180,9 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     int currentRank = 1;
     int currentScore = sortedTeams[0].roundPoints;
     Map<int, int> pointsForRank = {1: 100, 2: 75, 3: 50, 4: 25};
+
+    // Obtener el índice del juego actual
+    final gameIndex = gameProvider.games.length - 1;
 
     for (int i = 0; i < sortedTeams.length; i++) {
       if (sortedTeams[i].roundPoints < currentScore) {
@@ -187,7 +194,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       _updateCurrentGameScore(sortedTeams[i].id, points);
       teamsProvider.updateScore(
         sortedTeams[i].id,
-        teamsProvider.teams.length - 1,
+        gameIndex,
         points
       );
     }
@@ -311,7 +318,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                   width: double.infinity,
                   child: PrimaryButton(
                     text: 'Calcular Resultado',
-                    onPressed: () => _calculateRoundResults(teamsProvider),
+                    onPressed: () => _calculateRoundResults(teamsProvider, gameProvider),
                     backgroundColor: Colors.green,
                   ),
                 ),

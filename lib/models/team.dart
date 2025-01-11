@@ -15,7 +15,7 @@ class Team {
     this.totalScore = 0,
     this.roundPoints = 0,
     List<int?>? gameScores,
-  }) : this.gameScores = gameScores ?? List.filled(5, null);
+  }) : gameScores = gameScores ?? [];
 
   Team copyWith({
     int? totalScore,
