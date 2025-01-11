@@ -39,45 +39,126 @@ class _StandingsScreenState extends State<StandingsScreen> {
   }
 
   Widget _buildGameNavigator(List<Game> games) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: currentGameIndex > 0
-                ? () => setState(() => currentGameIndex--)
-                : null,
-          ),
-          Column(
-            children: [
-              const Text(
-                'Juego Actual',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
+  // Obtener los resultados del juego actual
+  final currentGame = games[currentGameIndex];
+  final List<Map<String, dynamic>> gameResults = _calculateGameResults(currentGame);
+
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Navegación y título
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: currentGameIndex > 0
+                      ? () => setState(() => currentGameIndex--)
+                      : null,
                 ),
-              ),
-              Text(
-                games.isNotEmpty ? games[currentGameIndex].name : 'Ningún Juego',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Resultados por juego',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _showEditGameNameDialog(context, currentGame),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              currentGame.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.edit, size: 16),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: currentGameIndex < games.length - 1
+                      ? () => setState(() => currentGameIndex++)
+                      : null,
+                ),
+              ],
+            ),
+            // Podio de resultados
+            if (gameResults.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: gameResults.map((result) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: result['teamColor'].withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.emoji_events,
+                              size: 16,
+                              color: _getMedalColor(result['position']),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${result['position']}°',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _getMedalColor(result['position']),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          result['teamName'],
+                          style: TextStyle(
+                            color: result['teamColor'],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (result['points'] != null)
+                          Text(
+                            '${result['points']} pts',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
             ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: currentGameIndex < games.length - 1
-                ? () => setState(() => currentGameIndex++)
-                : null,
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStandingsTable(List<Game> games, List<Team> teams) {
     // Ordenar equipos por puntaje total
@@ -130,7 +211,7 @@ class _StandingsScreenState extends State<StandingsScreen> {
                           DataCell(SizedBox(
                             width: 60,
                             child: Text(
-                              'Juego ${i + 1}',
+                              '${games[i].name}',
                               textAlign: TextAlign.center,
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
@@ -220,4 +301,90 @@ class _StandingsScreenState extends State<StandingsScreen> {
     
     return positions;
   }
+  Color _getMedalColor(int position) {
+  switch (position) {
+    case 1:
+      return Colors.amber;
+    case 2:
+      return Colors.grey[400]!;
+    case 3:
+      return Colors.orange[700]!;
+    default:
+      return Colors.grey[600]!;
+  }
+}
+
+List<Map<String, dynamic>> _calculateGameResults(Game game) {
+  final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
+  final teams = teamsProvider.teams;
+  
+  // Crear una lista de resultados para este juego específico
+  final results = teams.map((team) {
+    final gameScore = team.gameScores.length > currentGameIndex
+        ? team.gameScores[currentGameIndex]
+        : null;
+    return {
+      'teamId': team.id,
+      'teamName': team.name,
+      'teamColor': team.teamColor,
+      'score': gameScore,
+      'points': game.type == GameType.rounds ? team.roundPoints : null,
+    };
+  }).toList();
+  
+  // Ordenar por puntaje
+  results.sort((a, b) => ((b['score'] ?? 0) as int).compareTo((a['score'] ?? 0) as int));
+  
+  // Asignar posiciones considerando empates
+  int currentPosition = 1;
+  int sameScoreCount = 1;
+  
+  for (int i = 0; i < results.length; i++) {
+    if (i > 0 && results[i]['score'] == results[i - 1]['score']) {
+      results[i]['position'] = results[i - 1]['position'];
+      sameScoreCount++;
+    } else {
+      results[i]['position'] = currentPosition;
+      currentPosition = i + sameScoreCount + 1;
+      sameScoreCount = 1;
+    }
+  }
+  
+  return results;
+}
+
+Future<void> _showEditGameNameDialog(BuildContext context, Game game) async {
+  final TextEditingController controller = TextEditingController(text: game.name);
+  final gameProvider = Provider.of<GameProvider>(context, listen: false);
+
+  return showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Editar nombre del juego'),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(
+          labelText: 'Nombre del juego',
+        ),
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final newName = controller.text.trim();
+            if (newName.isNotEmpty) {
+              gameProvider.updateGameName(currentGameIndex, newName);
+            }
+            Navigator.pop(context);
+          },
+          child: const Text('Guardar'),
+        ),
+      ],
+    ),
+  );
+}
 }

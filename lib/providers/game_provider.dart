@@ -42,4 +42,18 @@ class GameProvider extends ChangeNotifier {
     _selectedNumbers = numbers;
     notifyListeners();
   }
+
+  void updateGameName(int gameIndex, String newName) {
+  if (gameIndex >= 0 && gameIndex < _games.length) {
+    // Nota: Como Game es inmutable, necesitarás crear una nueva instancia
+    _games[gameIndex] = Game(
+      id: _games[gameIndex].id,
+      name: newName,
+      type: _games[gameIndex].type,
+      isCompleted: _games[gameIndex].isCompleted,
+      isCurrent: _games[gameIndex].isCurrent,
+    );
+    notifyListeners();
+  }
+}
 }
