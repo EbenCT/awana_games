@@ -148,25 +148,25 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   }
 
   void _resetGame(GameProvider gameProvider) {
-    gameProvider.addGame();
-    setState(() {
-      currentStage = 1;
-      selectedTeams.clear();
-      assignedTeams.clear();
-      allTeamsAssigned = false;
-      roundCalculated = false; 
-      // Resetear puntajes del juego actual
-      currentGameScores.clear();
-      final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
-      for (var team in teams) {
-        currentGameScores[team.id] = 0;
-
-        // Resetear los puntos de ronda para cada equipo
-        Provider.of<TeamsProvider>(context, listen: false)
-            .updateTeamRoundPoints(team.id, 0);
-      }
-    });
-  }
+  gameProvider.addGame();
+  setState(() {
+    currentStage = 1;
+    selectedTeams.clear();
+    assignedTeams.clear();
+    allTeamsAssigned = false;
+    roundCalculated = false;
+    // Resetear puntajes del juego actual
+    currentGameScores.clear();
+    final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
+    for (var team in teams) {
+      currentGameScores[team.id] = 0;
+      Provider.of<TeamsProvider>(context, listen: false)
+          .updateTeamRoundPoints(team.id, 0);
+    }
+    // Limpiar números seleccionados pero mantener el máximo de la grilla
+    selectedNumbers.clear();
+  });
+}
 
   void _calculateRoundResults(TeamsProvider teamsProvider) {
     // Ordenar equipos por puntuación actual
@@ -278,6 +278,10 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                   NumberGrid(
                     selectedNumbers: selectedNumbers,
                     onNumberSelected: _onNumberSelected,
+                    maxNumbers: Provider.of<GameProvider>(context).maxGridNumbers,
+                    onAddNumber: () {
+                      Provider.of<GameProvider>(context, listen: false).incrementMaxNumbers();
+                    },
                   ),
                 ],
               ],

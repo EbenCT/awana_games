@@ -1,14 +1,19 @@
 // lib/widgets/score_counter/number_grid.dart
 import 'package:flutter/material.dart';
 
+// lib/widgets/score_counter/number_grid.dart
 class NumberGrid extends StatelessWidget {
   final List<int> selectedNumbers;
   final Function(int) onNumberSelected;
+  final int maxNumbers;
+  final Function() onAddNumber;
 
   const NumberGrid({
     Key? key,
     required this.selectedNumbers,
     required this.onNumberSelected,
+    required this.maxNumbers,
+    required this.onAddNumber,
   }) : super(key: key);
 
   @override
@@ -35,10 +40,24 @@ class NumberGrid extends StatelessWidget {
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
               ),
-              itemCount: 20,
+              itemCount: maxNumbers < 50 ? maxNumbers + 1 : maxNumbers,
               itemBuilder: (context, index) {
+                if (index == maxNumbers && maxNumbers < 50) {
+                  // Botón de añadir
+                  return ElevatedButton(
+                    onPressed: onAddNumber,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple[100],
+                      foregroundColor: Colors.purple,
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Icon(Icons.add),
+                  );
+                }
+
                 final number = index + 1;
                 final isSelected = selectedNumbers.contains(number);
+
                 return ElevatedButton(
                   onPressed: isSelected ? null : () => onNumberSelected(number),
                   style: ElevatedButton.styleFrom(
@@ -48,7 +67,7 @@ class NumberGrid extends StatelessWidget {
                   ),
                   child: Text(
                     '$number',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -62,4 +81,3 @@ class NumberGrid extends StatelessWidget {
     );
   }
 }
-

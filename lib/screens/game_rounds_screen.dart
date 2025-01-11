@@ -1,6 +1,8 @@
 // lib/screens/game_rounds_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/team.dart';
+import '../providers/game_provider.dart';
 import '../widgets/common/score_card.dart';
 import '../widgets/score_counter/number_grid.dart';
 
@@ -55,11 +57,15 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> {
                   },
                 ),
               )),
-          const SizedBox(height: 16),
-          NumberGrid(
-            selectedNumbers: selectedNumbers,
-            onNumberSelected: _onNumberSelected,
-          ),
+              const SizedBox(height: 16),
+              NumberGrid(
+                    selectedNumbers: selectedNumbers,
+                    onNumberSelected: _onNumberSelected,
+                    maxNumbers: Provider.of<GameProvider>(context).maxGridNumbers,
+                    onAddNumber: () {
+                      Provider.of<GameProvider>(context, listen: false).incrementMaxNumbers();
+                    },
+                  ),
         ],
       ),
       bottomNavigationBar: SafeArea(
