@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game.dart';
 import '../models/team.dart';
-import '../widgets/common/score_card.dart';
-import '../widgets/common/primary_button.dart';
-import '../widgets/score_counter/game_type_selector.dart';
-import '../widgets/score_counter/number_grid.dart';
 import '../providers/teams_provider.dart';
 import '../providers/game_provider.dart';
+import '../widgets/score_counter/edit_game_dialog.dart';
+import '../widgets/score_counter/game_app_bar.dart';
+import '../widgets/score_counter/game_body.dart';
+import '../widgets/score_counter/game_bottom_bar.dart';
+import '../widgets/score_counter/game_type_selector.dart';
 
 class ScoreCounterScreen extends StatefulWidget {
   const ScoreCounterScreen({Key? key}) : super(key: key);
+
   @override
   State<ScoreCounterScreen> createState() => _ScoreCounterScreenState();
 }
@@ -24,13 +26,12 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   List<int> assignedTeams = [];
   bool allTeamsAssigned = false;
   bool roundCalculated = false;
-  Map<int, int> currentGameScores = {};  // New map to track current game scores
+  Map<int, int> currentGameScores = {};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Initialize current game scores
       final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
       for (var team in teams) {
         currentGameScores[team.id] = 0;
@@ -38,41 +39,6 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     });
   }
 
-Future<void> _showEditGameNameDialog(BuildContext context, Game game) async {
-    final TextEditingController controller = TextEditingController(text: game.name);
-    final gameProvider = Provider.of<GameProvider>(context, listen: false);
-    final currentGameIndex = gameProvider.games.length - 1;
-
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar nombre del juego'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Nombre del juego',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty) {
-                gameProvider.updateGameName(currentGameIndex, newName);
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
   String _getStageText() {
     switch (currentStage) {
       case 1:
@@ -84,6 +50,16 @@ Future<void> _showEditGameNameDialog(BuildContext context, Game game) async {
       default:
         return "";
     }
+  }
+
+  void _showEditGameNameDialog(BuildContext context, Game game) {
+    showDialog(
+      context: context,
+      builder: (context) => EditGameDialog(
+        game: game,
+        gameIndex: Provider.of<GameProvider>(context, listen: false).games.length - 1,
+      ),
+    );
   }
 
   void _onGameTypeChanged(GameType type) {
@@ -245,30 +221,11 @@ Future<void> _showEditGameNameDialog(BuildContext context, Game game) async {
     final teamsProvider = Provider.of<TeamsProvider>(context);
     final gameProvider = Provider.of<GameProvider>(context);
     final currentGame = gameProvider.games.isNotEmpty ? gameProvider.games.last : null;
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: currentGame != null
-          ? InkWell(
-              onTap: () => _showEditGameNameDialog(context, currentGame),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(currentGame.name),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.edit, size: 16),
-                ],
-              ),
-            )
-          : const Text('Sin Juego'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.leaderboard),
-            onPressed: () => Navigator.pushNamed(context, '/standings'),
-          ),
-        ],
+      appBar: GameAppBar(
+        currentGame: currentGame,
+        onEditGame: () => _showEditGameNameDialog(context, currentGame!),
       ),
       body: Column(
         children: [
@@ -295,96 +252,48 @@ Future<void> _showEditGameNameDialog(BuildContext context, Game game) async {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                ...teamsProvider.teams.map((team) {
-                  final isDisabled = assignedTeams.contains(team.id);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: ScoreCard(
-                      team: team,
-                      showRoundPoints: activeGameType == GameType.rounds && !roundCalculated,
-                      onPointsChanged: activeGameType == GameType.rounds && !roundCalculated
-                          ? (change) {
-                            final newPoints = team.roundPoints + change;
-                            if (newPoints >= 0) {
-                              teamsProvider.updateTeamRoundPoints(team.id, newPoints);
-                            }
-                          }
-                          : null,
-                  isSelected: activeGameType == GameType.normal ? selectedTeams.contains(team.id) : false,
-                  onSelected: (activeGameType == GameType.normal && !isDisabled)
-                          ? (isSelected) {
-                              setState(() {
-                                if (isSelected) {
-                                  selectedTeams.add(team.id);
-                                } else {
-                                  selectedTeams.remove(team.id);
-                                }
-                              });
-                            }
-                            : null,
-                      currentGameScore: currentGameScores[team.id] ?? 0,  // Add current game score
-                    ),
-                  );
-                }),
-                if (activeGameType == GameType.rounds && !roundCalculated) ...[
-                  const SizedBox(height: 16),
-                  NumberGrid(
-                    selectedNumbers: selectedNumbers,
-                    onNumberSelected: _onNumberSelected,
-                    maxNumbers: Provider.of<GameProvider>(context).maxGridNumbers,
-                    onAddNumber: () {
-                      Provider.of<GameProvider>(context, listen: false).incrementMaxNumbers();
-                    },
-                  ),
-                ],
-              ],
+            child: GameBody(
+              teams: teamsProvider.teams,
+              activeGameType: activeGameType,
+              assignedTeams: assignedTeams,
+              selectedTeams: selectedTeams,
+              currentGameScores: currentGameScores,
+              roundCalculated: roundCalculated,
+              onTeamRoundPointsChanged: (teamId, change) {
+                setState(() {               
+                  final team = teamsProvider.teams.firstWhere((t) => t.id == teamId);
+                  final int  newPoints = team.roundPoints + change;
+                  if (newPoints >= 0) {
+                    teamsProvider.updateTeamRoundPoints(teamId, newPoints);
+                  }
+                });
+              },
+              onTeamSelected: (teamId, isSelected) {
+                setState(() {
+                  if (isSelected) {
+                    selectedTeams.add(teamId);
+                  } else {
+                    selectedTeams.remove(teamId);
+                  }
+                });
+              },
+              selectedNumbers: selectedNumbers,
+              onNumberSelected: _onNumberSelected,
+              maxGridNumbers: gameProvider.maxGridNumbers,
+              onAddNumber: () => gameProvider.incrementMaxNumbers(),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (activeGameType == GameType.normal)
-                SizedBox(
-                  width: double.infinity, // Ocupa todo el ancho disponible
-                  child: PrimaryButton(
-                    text: 'Asignar Posición',
-                    onPressed: selectedTeams.isNotEmpty && !allTeamsAssigned
-                        ? () => _assignPoints(teamsProvider)
-                        : (){},
-                    backgroundColor: Colors.green,
-                  ),
-                ),
-              if (activeGameType == GameType.rounds && !roundCalculated)
-                SizedBox(
-                  width: double.infinity,
-                  child: PrimaryButton(
-                    text: 'Calcular Resultado',
-                    onPressed: () => _calculateRoundResults(teamsProvider, gameProvider),
-                    backgroundColor: Colors.green,
-                  ),
-                ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity, // Ocupa todo el ancho disponible
-                child: PrimaryButton(
-                  text: 'Próximo Juego',
-                  onPressed: allTeamsAssigned ? () => _resetGame(gameProvider) : (){},
-                  backgroundColor: Colors.blue,
-                ),
-              ),
-            ],
-          ),
-        ),
+      bottomNavigationBar: GameBottomBar(
+        activeGameType: activeGameType,
+        roundCalculated: roundCalculated,
+        allTeamsAssigned: allTeamsAssigned,
+        hasSelectedTeams: selectedTeams.isNotEmpty,
+        onAssignPosition: () => _assignPoints(teamsProvider),
+        onCalculateResult: () => _calculateRoundResults(teamsProvider, gameProvider),
+        onNextGame: () => _resetGame(gameProvider),
       ),
-
     );
   }
 }
