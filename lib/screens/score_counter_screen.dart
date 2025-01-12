@@ -38,6 +38,41 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     });
   }
 
+Future<void> _showEditGameNameDialog(BuildContext context, Game game) async {
+    final TextEditingController controller = TextEditingController(text: game.name);
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final currentGameIndex = gameProvider.games.length - 1;
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar nombre del juego'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Nombre del juego',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                gameProvider.updateGameName(currentGameIndex, newName);
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
   String _getStageText() {
     switch (currentStage) {
       case 1:
@@ -213,7 +248,21 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(currentGame?.name ?? 'Sin Juego'),
+        title: currentGame != null
+          ? InkWell(
+              onTap: () => _showEditGameNameDialog(context, currentGame),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(currentGame.name),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.edit, size: 16),
+                ],
+              ),
+            )
+          : const Text('Sin Juego'),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.leaderboard),
