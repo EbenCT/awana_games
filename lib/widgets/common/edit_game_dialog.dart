@@ -1,4 +1,4 @@
-// lib/widgets/score_counter/edit_game_dialog.dart
+// lib/widgets/common/edit_game_dialog.dart
 import 'package:flutter/material.dart';
 import '../../models/game.dart';
 import '../../providers/game_provider.dart';
@@ -25,6 +25,7 @@ class EditGameDialog extends StatelessWidget {
         decoration: const InputDecoration(
           labelText: 'Nombre del juego',
         ),
+        maxLength: 30,
         autofocus: true,
       ),
       actions: [

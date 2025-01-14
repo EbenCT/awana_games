@@ -5,7 +5,7 @@ import '../models/game.dart';
 import '../models/team.dart';
 import '../providers/teams_provider.dart';
 import '../providers/game_provider.dart';
-import '../widgets/score_counter/edit_game_dialog.dart';
+import '../widgets/common/edit_game_dialog.dart';
 import '../widgets/score_counter/game_app_bar.dart';
 import '../widgets/score_counter/game_body.dart';
 import '../widgets/score_counter/game_bottom_bar.dart';
@@ -239,16 +239,42 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                 ),
                 const SizedBox(height: 16),
                 if (activeGameType == GameType.normal)
-                  Text(
-                    _getStageText(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                    textAlign: TextAlign.center,
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Contorno del texto con duplicados
+                      Text(
+                        _getStageText(),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 6
+                            ..color = Colors.black, // Contorno negro
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      // Texto principal encima del contorno
+                      Text(
+                        _getStageText(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.yellow, // Color principal
+                          shadows: [
+                            Shadow(
+                              blurRadius: 4.0,
+                              color: Colors.black26,
+                              offset: Offset(2.0, 2.0),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-              ],
+                ],
             ),
           ),
           Expanded(

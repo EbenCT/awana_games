@@ -22,7 +22,15 @@ class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(currentGame!.name),
+                  Flexible(
+                    child: Text(
+                      currentGame!.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 4),
                   const Icon(Icons.edit, size: 16),
                 ],
