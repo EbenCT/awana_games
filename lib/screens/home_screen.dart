@@ -313,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       // Navegar a la tabla de posiciones
                       Navigator.of(context).pushNamed('/score');
                     },
-                    backgroundColor: Colors.white,
+                    backgroundColor: Colors.purple,
                     fullWidth: true,
                     variant: ButtonVariant.primary,
                   ),
