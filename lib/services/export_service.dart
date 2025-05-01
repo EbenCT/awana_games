@@ -1,15 +1,21 @@
 // lib/services/export_service.dart
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import 'package:screenshot/screenshot.dart';
 import '../models/team.dart';
 import '../models/game.dart';
 
 class ExportService {
-  // Exportar resultados a PDF
+  // Existing methods for PDF and CSV export
+  
+  // Export results to PDF
   static Future<void> exportToPdf({
     required List<Team> teams,
     required List<Game> games,
@@ -57,7 +63,6 @@ class ExportService {
                   ),
                 ),
                 pw.SizedBox(height: 20),
-                
                 // Tabla de equipos ordenados por posición
                 pw.Table(
                   border: pw.TableBorder.all(),
@@ -73,15 +78,14 @@ class ExportService {
                         _buildTableCell('Puntuación', isHeader: true),
                       ],
                     ),
-                    
                     // Filas de equipos
                     ...sortedTeams.map((team) => pw.TableRow(
-                      children: [
-                        _buildTableCell('${positions[team.id]}°'),
-                        _buildTableCell(team.name),
-                        _buildTableCell('${team.totalScore}'),
-                      ],
-                    )),
+                          children: [
+                            _buildTableCell('${positions[team.id]}°'),
+                            _buildTableCell(team.name),
+                            _buildTableCell('${team.totalScore}'),
+                          ],
+                        )),
                   ],
                 ),
               ],
@@ -107,7 +111,6 @@ class ExportService {
                 ),
               ),
               pw.SizedBox(height: 20),
-              
               // Tabla con resultados por juego
               pw.Table(
                 border: pw.TableBorder.all(),
@@ -119,27 +122,26 @@ class ExportService {
                     ),
                     children: [
                       _buildTableCell('Equipo', isHeader: true),
-                      ...List.generate(games.length, (index) => 
-                        _buildTableCell(games[index].name, isHeader: true)
+                      ...List.generate(games.length, (index) =>
+                          _buildTableCell(games[index].name, isHeader: true)
                       ),
                       _buildTableCell('Total', isHeader: true),
                     ],
                   ),
-                  
                   // Filas de equipos
                   ...teams.map((team) => pw.TableRow(
-                    children: [
-                      _buildTableCell(team.name),
-                      ...List.generate(games.length, (index) => 
-                        _buildTableCell(
-                          team.gameScores.length > index
-                            ? (team.gameScores[index]?.toString() ?? '-')
-                            : '-'
-                        )
-                      ),
-                      _buildTableCell('${team.totalScore}'),
-                    ],
-                  )),
+                        children: [
+                          _buildTableCell(team.name),
+                          ...List.generate(games.length, (index) =>
+                              _buildTableCell(
+                                team.gameScores.length > index
+                                    ? (team.gameScores[index]?.toString() ?? '-')
+                                    : '-'
+                              )
+                          ),
+                          _buildTableCell('${team.totalScore}'),
+                        ],
+                      )),
                 ],
               ),
             ],
@@ -196,7 +198,6 @@ class ExportService {
       // Datos de equipos
       for (var team in sortedTeams) {
         csvContent += '${team.name},';
-        
         for (int i = 0; i < games.length; i++) {
           if (team.gameScores.length > i && team.gameScores[i] != null) {
             csvContent += '${team.gameScores[i]},';
@@ -204,7 +205,6 @@ class ExportService {
             csvContent += '0,';
           }
         }
-        
         csvContent += '${team.totalScore}\n';
       }
       
@@ -232,6 +232,97 @@ class ExportService {
     }
   }
   
+  // New method for exporting as an image
+  static Future<void> exportToImage({
+    required GlobalKey tableKey,
+    required BuildContext context,
+  }) async {
+    try {
+      final screenshotController = ScreenshotController();
+      
+      // Capture the table widget as an image
+      final Uint8List? capturedImage = await screenshotController.captureFromWidget(
+        // Find the widget by key and capture it
+        Builder(
+          builder: (BuildContext context) {
+            final RenderRepaintBoundary boundary = tableKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+            return boundary.child as Widget;
+          },
+        ),
+        delay: const Duration(milliseconds: 10),
+        pixelRatio: 2.0, // Higher quality
+      );
+      
+      if (capturedImage != null) {
+        // Save image to temporary storage
+        final output = await getTemporaryDirectory();
+        final file = File('${output.path}/resultados_awana_games.png');
+        await file.writeAsBytes(capturedImage);
+        
+        // Share the image
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'Resultados Awana Games (Imagen)',
+          text: 'Compartiendo tabla de resultados de Awana Games',
+        );
+      } else {
+        throw Exception('No se pudo capturar la imagen');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al exportar imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  // Alternative method using RepaintBoundary approach
+  static Future<void> exportToImageUsingBoundary({
+    required GlobalKey tableKey,
+    required BuildContext context,
+  }) async {
+    try {
+      // Get the render object of the widget with the key
+      final RenderRepaintBoundary boundary = tableKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      
+      // Convert to image
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (byteData != null) {
+        // Convert to Uint8List
+        final Uint8List pngBytes = byteData.buffer.asUint8List();
+        
+        // Save image to temporary storage
+        final output = await getTemporaryDirectory();
+        final file = File('${output.path}/resultados_awana_games.png');
+        await file.writeAsBytes(pngBytes);
+        
+        // Share the image
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'Resultados Awana Games (Imagen)',
+          text: 'Compartiendo tabla de resultados de Awana Games',
+        );
+      } else {
+        throw Exception('No se pudo convertir a bytes');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al exportar imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
   // Método para calcular posiciones
   static Map<int, int> _calculatePositions(List<Team> sortedTeams) {
     Map<int, int> positions = {};
@@ -248,7 +339,6 @@ class ExportService {
         teamsWithSameScore = 1;
       }
     }
-    
     return positions;
   }
   

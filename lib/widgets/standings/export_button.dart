@@ -4,9 +4,15 @@ import 'package:provider/provider.dart';
 import '../../providers/teams_provider.dart';
 import '../../providers/game_provider.dart';
 import '../../services/export_service.dart';
+import '../../widgets/standings/standings_table.dart';
 
 class ExportButton extends StatelessWidget {
-  const ExportButton({Key? key}) : super(key: key);
+  final GlobalKey<StandingsTableState> tableKey;
+  
+  const ExportButton({
+    Key? key, 
+    required this.tableKey,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +45,8 @@ class ExportButton extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          
+          // PDF Option
           ListTile(
             leading: const CircleAvatar(
               backgroundColor: Colors.red,
@@ -55,6 +63,8 @@ class ExportButton extends StatelessWidget {
               );
             },
           ),
+          
+          // CSV Option
           ListTile(
             leading: const CircleAvatar(
               backgroundColor: Colors.green,
@@ -71,8 +81,38 @@ class ExportButton extends StatelessWidget {
               );
             },
           ),
+          
+          // New Image Option
+          ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Colors.blue,
+              child: Icon(Icons.image, color: Colors.white),
+            ),
+            title: const Text('Exportar como Imagen'),
+            subtitle: const Text('Para compartir en redes sociales o mensajería'),
+            onTap: () {
+              Navigator.pop(context);
+              // Check if we have access to the table widget state
+              if (tableKey.currentState != null) {
+                ExportService.exportToImageUsingBoundary(
+                  tableKey: tableKey.currentState!.tableKey,
+                  context: context,
+                );
+              } else {
+                // Show error if we can't access the table
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No se pudo acceder a la tabla para exportar'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+          
           const SizedBox(height: 20),
-          // Botón de cancelar
+          
+          // Cancel button
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
@@ -83,6 +123,7 @@ class ExportButton extends StatelessWidget {
               ),
             ),
           ),
+          
           const SizedBox(height: 10),
         ],
       ),

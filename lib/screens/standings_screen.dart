@@ -17,7 +17,8 @@ class StandingsScreen extends StatefulWidget {
 class _StandingsScreenState extends State<StandingsScreen> with SingleTickerProviderStateMixin {
   int currentGameIndex = 0;
   late AnimationController _animationController;
-  
+  final GlobalKey<StandingsTableState> _tableKey = GlobalKey<StandingsTableState>();
+
   @override
   void initState() {
     super.initState();
@@ -26,20 +27,20 @@ class _StandingsScreenState extends State<StandingsScreen> with SingleTickerProv
       duration: const Duration(milliseconds: 800),
     )..forward();
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context);
     final gameProvider = Provider.of<GameProvider>(context);
     final games = gameProvider.games;
     final teams = teamsProvider.teams;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tabla de Posiciones'),
@@ -68,6 +69,7 @@ class _StandingsScreenState extends State<StandingsScreen> with SingleTickerProv
             ),
             Expanded(
               child: StandingsTable(
+                key: _tableKey,
                 games: games,
                 teams: teams,
               ),
@@ -80,7 +82,7 @@ class _StandingsScreenState extends State<StandingsScreen> with SingleTickerProv
           parent: _animationController,
           curve: Curves.elasticOut,
         ),
-        child: const ExportButton(),
+        child: ExportButton(tableKey: _tableKey),
       ),
     );
   }

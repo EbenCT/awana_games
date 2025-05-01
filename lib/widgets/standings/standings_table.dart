@@ -1,8 +1,9 @@
+// lib/widgets/standings/standings_table.dart
 import 'package:flutter/material.dart';
 import '../../models/game.dart';
 import '../../models/team.dart';
 
-class StandingsTable extends StatelessWidget {
+class StandingsTable extends StatefulWidget {
   final List<Game> games;
   final List<Team> teams;
   
@@ -11,31 +12,42 @@ class StandingsTable extends StatelessWidget {
     required this.games,
     required this.teams,
   }) : super(key: key);
+  
+  @override
+  State<StandingsTable> createState() => StandingsTableState();
+}
 
+class StandingsTableState extends State<StandingsTable> {
+  // Expose the key that will be used to capture the table as an image
+  final GlobalKey tableKey = GlobalKey();
+  
   @override
   Widget build(BuildContext context) {
-    final sortedTeams = List<Team>.from(teams)
+    final sortedTeams = List<Team>.from(widget.teams)
       ..sort((a, b) => b.totalScore.compareTo(a.totalScore));
     final positions = _calculatePositions(sortedTeams);
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
-
-    return Card(
-      margin: const EdgeInsets.all(16.0),
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return isSmallScreen 
-            ? _buildCompactVerticalTable(sortedTeams, positions)
-            : _buildFullVerticalTable(sortedTeams, positions);
-        },
+    
+    return RepaintBoundary(
+      key: tableKey,
+      child: Card(
+        margin: const EdgeInsets.all(16.0),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return isSmallScreen
+                ? _buildCompactVerticalTable(sortedTeams, positions)
+                : _buildFullVerticalTable(sortedTeams, positions);
+          },
+        ),
       ),
     );
   }
-
+  
   // Nueva tabla vertical compacta
   Widget _buildCompactVerticalTable(List<Team> sortedTeams, Map<int, int> positions) {
     return SingleChildScrollView(
@@ -53,36 +65,36 @@ class StandingsTable extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 100, child: Text('Juego')),
-                ...teams.map((team) => Expanded(
-                  child: Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: team.teamColor,
-                            shape: BoxShape.circle,
-                          ),
+                ...widget.teams.map((team) => Expanded(
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: team.teamColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                team.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            team.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )),
+                      ),
+                    )),
               ],
             ),
           ),
-          ...List.generate(games.length, (gameIndex) {
-            final game = games[gameIndex];
+          ...List.generate(widget.games.length, (gameIndex) {
+            final game = widget.games[gameIndex];
             return Container(
               decoration: BoxDecoration(
                 color: gameIndex.isEven ? Colors.grey[50] : Colors.white,
@@ -107,15 +119,15 @@ class StandingsTable extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    ...teams.map((team) => Expanded(
-                      child: Center(
-                        child: Text(
-                          team.gameScores.length > gameIndex
-                            ? (team.gameScores[gameIndex]?.toString() ?? '-')
-                            : '-',
-                        ),
-                      ),
-                    )),
+                    ...widget.teams.map((team) => Expanded(
+                          child: Center(
+                            child: Text(
+                              team.gameScores.length > gameIndex
+                                  ? (team.gameScores[gameIndex]?.toString() ?? '-')
+                                  : '-',
+                            ),
+                          ),
+                        )),
                   ],
                 ),
               ),
@@ -134,7 +146,7 @@ class StandingsTable extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                vertical: 12, 
+                vertical: 12,
                 horizontal: 8,
               ),
               child: Row(
@@ -146,29 +158,29 @@ class StandingsTable extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  ...teams.map((team) => Expanded(
-                    child: Center(
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: team.teamColor.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: team.teamColor),
-                        ),
+                  ...widget.teams.map((team) => Expanded(
                         child: Center(
-                          child: Text(
-                            '${positions[team.id]}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: team.teamColor,
-                              fontSize: 12,
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: team.teamColor.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: team.teamColor),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${positions[team.id]}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: team.teamColor,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  )),
+                      )),
                 ],
               ),
             ),
@@ -196,23 +208,23 @@ class StandingsTable extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  ...teams.map((team) => Expanded(
-                    child: Center(
-                      child: TweenAnimationBuilder<int>(
-                        tween: IntTween(begin: 0, end: team.totalScore),
-                        duration: const Duration(milliseconds: 800),
-                        builder: (context, value, child) {
-                          return Text(
-                            '$value',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: team.teamColor,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  )),
+                  ...widget.teams.map((team) => Expanded(
+                        child: Center(
+                          child: TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: 0, end: team.totalScore),
+                            duration: const Duration(milliseconds: 800),
+                            builder: (context, value, child) {
+                              return Text(
+                                '$value',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: team.teamColor,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      )),
                 ],
               ),
             ),
@@ -221,7 +233,7 @@ class StandingsTable extends StatelessWidget {
       ),
     );
   }
-
+  
   // Nueva tabla vertical completa
   Widget _buildFullVerticalTable(List<Team> sortedTeams, Map<int, int> positions) {
     return SingleChildScrollView(
@@ -256,64 +268,64 @@ class StandingsTable extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-              ...teams.map((team) => DataColumn(
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: team.teamColor,
-                        shape: BoxShape.circle,
-                      ),
+              ...widget.teams.map((team) => DataColumn(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: team.teamColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            team.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        team.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+                  )),
             ],
             rows: [
-              ...List.generate(games.length, (gameIndex) {
-                final game = games[gameIndex];
+              ...List.generate(widget.games.length, (gameIndex) {
+                final game = widget.games[gameIndex];
                 return DataRow(
                   cells: [
                     DataCell(Text(game.name)),
-                    ...teams.map((team) => DataCell(
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: team.gameScores.length > gameIndex &&
-                                team.gameScores[gameIndex] != null
-                                ? team.teamColor.withOpacity(0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            team.gameScores.length > gameIndex
-                                ? (team.gameScores[gameIndex]?.toString() ?? '-')
-                                : '-',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: team.gameScores.length > gameIndex &&
-                                  team.gameScores[gameIndex] != null
-                                  ? team.teamColor
-                                  : Colors.grey,
+                    ...widget.teams.map((team) => DataCell(
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: team.gameScores.length > gameIndex &&
+                                        team.gameScores[gameIndex] != null
+                                    ? team.teamColor.withOpacity(0.1)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                team.gameScores.length > gameIndex
+                                    ? (team.gameScores[gameIndex]?.toString() ?? '-')
+                                    : '-',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: team.gameScores.length > gameIndex &&
+                                          team.gameScores[gameIndex] != null
+                                      ? team.teamColor
+                                      : Colors.grey,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    )),
+                        )),
                   ],
                 );
               }),
@@ -325,24 +337,24 @@ class StandingsTable extends StatelessWidget {
                     'POSICIÓN',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   )),
-                  ...teams.map((team) => DataCell(
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: team.teamColor.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '${positions[team.id]}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: team.teamColor,
+                  ...widget.teams.map((team) => DataCell(
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: team.teamColor.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${positions[team.id]}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: team.teamColor,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  )),
+                      )),
                 ],
               ),
               // Fila total
@@ -353,34 +365,34 @@ class StandingsTable extends StatelessWidget {
                     'TOTAL',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   )),
-                  ...teams.map((team) => DataCell(
-                    Center(
-                      child: TweenAnimationBuilder<int>(
-                        tween: IntTween(begin: 0, end: team.totalScore),
-                        duration: const Duration(milliseconds: 800),
-                        builder: (context, value, child) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: team.teamColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              '$value',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: team.teamColor,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  )),
+                  ...widget.teams.map((team) => DataCell(
+                        Center(
+                          child: TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: 0, end: team.totalScore),
+                            duration: const Duration(milliseconds: 800),
+                            builder: (context, value, child) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: team.teamColor.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  '$value',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: team.teamColor,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      )),
                 ],
               ),
             ],
@@ -389,7 +401,7 @@ class StandingsTable extends StatelessWidget {
       ),
     );
   }
-
+  
   // Método auxiliar para calcular las posiciones finales
   Map<int, int> _calculatePositions(List<Team> sortedTeams) {
     Map<int, int> positions = {};
@@ -406,7 +418,6 @@ class StandingsTable extends StatelessWidget {
         teamsWithSameScore = 1;
       }
     }
-    
     return positions;
   }
 }
