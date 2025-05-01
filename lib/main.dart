@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
@@ -5,25 +6,47 @@ import 'config/routes.dart';
 import 'providers/teams_provider.dart';
 import 'providers/game_provider.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar los providers antes de construir la app
+  final teamsProvider = TeamsProvider();
+  final gameProvider = GameProvider();
+  
+  // Cargar datos guardados de manera asíncrona
+  await Future.wait([
+    teamsProvider.initialize(),
+    gameProvider.initialize(),
+  ]);
+  
+  runApp(MyApp(
+    teamsProvider: teamsProvider,
+    gameProvider: gameProvider,
+  ));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final TeamsProvider teamsProvider;
+  final GameProvider gameProvider;
+  
+  const MyApp({
+    Key? key, 
+    required this.teamsProvider,
+    required this.gameProvider,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => TeamsProvider()),
-        ChangeNotifierProvider(create: (_) => GameProvider()),
+        ChangeNotifierProvider.value(value: teamsProvider),
+        ChangeNotifierProvider.value(value: gameProvider),
       ],
       child: MaterialApp(
         title: 'Awana Games',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        routes: AppRoutes.routes,
+        onGenerateRoute: AppRoutes.generateRoute,
         initialRoute: '/',
       ),
     );

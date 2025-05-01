@@ -1,7 +1,6 @@
 // lib/widgets/score_counter/game_bottom_bar.dart
 import 'package:flutter/material.dart';
 import '../../models/game.dart';
-import '../common/primary_button.dart';
 
 class GameBottomBar extends StatelessWidget {
   final GameType activeGameType;
@@ -25,42 +24,146 @@ class GameBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isLandscape = size.width > size.height;
+    
     return SafeArea(
-      child: Padding(
+      child: Container(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (activeGameType == GameType.normal)
-              SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Asignar Posición',
-                  onPressed: hasSelectedTeams && !allTeamsAssigned
-                      ? onAssignPosition
-                      : () {},
-                  backgroundColor: Colors.green,
-                ),
-              ),
-            if (activeGameType == GameType.rounds && !roundCalculated)
-              SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  text: 'Calcular Resultado',
-                  onPressed: onCalculateResult,
-                  backgroundColor: Colors.green,
-                ),
-              ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                text: 'Próximo Juego',
-                onPressed: allTeamsAssigned ? onNextGame : () {},
-                backgroundColor: Colors.blue,
-              ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              offset: const Offset(0, -3),
+              blurRadius: 6,
             ),
           ],
+        ),
+        child: isLandscape
+            ? _buildLandscapeLayout()
+            : _buildPortraitLayout(),
+      ),
+    );
+  }
+  
+  Widget _buildPortraitLayout() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (activeGameType == GameType.normal)
+          _buildAnimatedButton(
+            text: 'Asignar Posición',
+            icon: Icons.emoji_events,
+            backgroundColor: Colors.green,
+            isEnabled: hasSelectedTeams && !allTeamsAssigned,
+            onPressed: hasSelectedTeams && !allTeamsAssigned
+                ? onAssignPosition
+                : null,
+          ),
+        if (activeGameType == GameType.rounds && !roundCalculated)
+          _buildAnimatedButton(
+            text: 'Calcular Resultado',
+            icon: Icons.calculate,
+            backgroundColor: Colors.green,
+            isEnabled: true,
+            onPressed: onCalculateResult,
+          ),
+        const SizedBox(height: 8),
+        _buildAnimatedButton(
+          text: 'Próximo Juego',
+          icon: Icons.arrow_forward,
+          backgroundColor: Colors.blue,
+          isEnabled: allTeamsAssigned,
+          onPressed: allTeamsAssigned ? onNextGame : null,
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildLandscapeLayout() {
+    return Row(
+      children: [
+        if (activeGameType == GameType.normal)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _buildAnimatedButton(
+                text: 'Asignar Posición',
+                icon: Icons.emoji_events,
+                backgroundColor: Colors.green,
+                isEnabled: hasSelectedTeams && !allTeamsAssigned,
+                onPressed: hasSelectedTeams && !allTeamsAssigned
+                    ? onAssignPosition
+                    : null,
+              ),
+            ),
+          ),
+        if (activeGameType == GameType.rounds && !roundCalculated)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _buildAnimatedButton(
+                text: 'Calcular Resultado',
+                icon: Icons.calculate,
+                backgroundColor: Colors.green,
+                isEnabled: true,
+                onPressed: onCalculateResult,
+              ),
+            ),
+          ),
+        Expanded(
+          child: _buildAnimatedButton(
+            text: 'Próximo Juego',
+            icon: Icons.arrow_forward,
+            backgroundColor: Colors.blue,
+            isEnabled: allTeamsAssigned,
+            onPressed: allTeamsAssigned ? onNextGame : null,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildAnimatedButton({
+    required String text,
+    required IconData icon,
+    required Color backgroundColor,
+    required bool isEnabled,
+    required VoidCallback? onPressed,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: isEnabled
+            ? [
+                BoxShadow(
+                  color: backgroundColor.withOpacity(0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isEnabled ? backgroundColor : Colors.grey[300],
+          foregroundColor: isEnabled ? Colors.white : Colors.grey[600],
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: isEnabled ? 0 : 0,
+        ),
+        icon: Icon(icon),
+        label: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

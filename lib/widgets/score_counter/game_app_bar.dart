@@ -16,32 +16,51 @@ class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       title: currentGame != null
-          ? InkWell(
-              onTap: onEditGame,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      currentGame!.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 18,
-                      ),
+          ? Hero(
+              tag: 'game_title_${currentGame!.id}',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onEditGame,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            currentGame!.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.edit, size: 16),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.edit, size: 16),
-                ],
+                ),
               ),
             )
           : const Text('Sin Juego'),
       centerTitle: true,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.leaderboard),
-          onPressed: () => Navigator.pushNamed(context, '/standings'),
+        Hero(
+          tag: 'leaderboard_button',
+          child: Material(
+            color: Colors.transparent,
+            child: IconButton(
+              icon: const Icon(Icons.leaderboard),
+              tooltip: 'Ver tabla de posiciones',
+              onPressed: () => Navigator.pushNamed(context, '/standings'),
+            ),
+          ),
         ),
       ],
     );

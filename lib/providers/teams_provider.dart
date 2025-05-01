@@ -2,58 +2,195 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/team.dart';
+import '../services/storage_service.dart';
 
 class TeamsProvider extends ChangeNotifier {
-  
   final List<Team> _teams = [
     Team(id: 1, name: 'Rojo', teamColor: const Color(0xFFFF0000)),
     Team(id: 2, name: 'Amarillo', teamColor: const Color(0xFFFFC107)),
     Team(id: 3, name: 'Verde', teamColor: const Color(0xFF4CAF50)),
     Team(id: 4, name: 'Azul', teamColor: const Color(0xFF2196F3)),
   ];
+  bool _isLoading = false;
+  bool _isInitialized = false;
   
   List<Team> get teams => _teams;
-
+  bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
+  
   List<Team> get sortedTeams {
     final sorted = List<Team>.from(_teams);
     sorted.sort((a, b) => b.totalScore.compareTo(a.totalScore));
     return sorted;
   }
-
-  void resetScores() {
-    for (var team in _teams) {
-      team.totalScore = 0;
-      team.gameScores = [];
+  
+  // Inicializar el proveedor y cargar datos guardados
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    _isLoading = true;
+    
+    try {
+      final savedTeams = await StorageService.loadTeams();
+      if (savedTeams != null && savedTeams.isNotEmpty) {
+        _teams.clear();
+        _teams.addAll(savedTeams);
+      }
+      _isInitialized = true;
+    } catch (e) {
+      debugPrint('Error initializing TeamsProvider: $e');
+    } finally {
+      _isLoading = false;
+      // Nota: No llamamos a notifyListeners() aquí porque puede causar problemas durante la inicialización
     }
+  }
+  
+  void resetScores() {
+    for (int i = 0; i < _teams.length; i++) {
+      final team = _teams[i];
+      _teams[i] = Team(
+        id: team.id,
+        name: team.name,
+        teamColor: team.teamColor,
+        totalScore: 0,
+        roundPoints: 0,
+        gameScores: [],
+      );
+    }
+    _saveTeams();
     notifyListeners();
   }
-
-void updateScore(int teamId, int gameIndex, int score) {
-    final team = _teams.firstWhere((t) => t.id == teamId);
-    while (team.gameScores.length <= gameIndex) {
-        team.gameScores.add(null); // Asegura que la lista tenga el tamaño adecuado
+  
+  void updateScore(int teamId, int gameIndex, int score) {
+    final teamIndex = _teams.indexWhere((t) => t.id == teamId);
+    if (teamIndex == -1) return;
+    
+    final team = _teams[teamIndex];
+    
+    // Asegurar que la lista de puntuaciones tenga el tamaño adecuado
+    var gameScores = List<int?>.from(team.gameScores);
+    while (gameScores.length <= gameIndex) {
+      gameScores.add(null);
     }
-    team.gameScores[gameIndex] = score;
-    team.totalScore = team.gameScores.fold(0, (sum, s) => sum + (s ?? 0));
+    
+    // Actualizar la puntuación del juego específico
+    gameScores[gameIndex] = score;
+    
+    // Calcular la puntuación total
+    final totalScore = gameScores.fold(0, (sum, s) => sum + (s ?? 0));
+    
+    // Actualizar el equipo con los nuevos valores
+    _teams[teamIndex] = Team(
+      id: team.id,
+      name: team.name,
+      teamColor: team.teamColor,
+      totalScore: totalScore,
+      roundPoints: team.roundPoints,
+      gameScores: gameScores,
+    );
+    
+    _saveTeams();
     notifyListeners();
-}
-
+  }
+  
   void updateTeamScore(int teamId, int gameIndex, int score) {
     final teamIndex = _teams.indexWhere((team) => team.id == teamId);
-    if (teamIndex != -1) {
-      _teams[teamIndex].gameScores[gameIndex] = score;
-      _teams[teamIndex].totalScore = _teams[teamIndex].gameScores
-          .where((score) => score != null)
-          .fold(0, (sum, score) => sum + score!);
-      notifyListeners();
+    if (teamIndex == -1) return;
+    
+    final team = _teams[teamIndex];
+    
+    // Obtener la lista de puntuaciones del equipo
+    var gameScores = List<int?>.from(team.gameScores);
+    
+    // Asegurar que la lista tenga el tamaño adecuado
+    while (gameScores.length <= gameIndex) {
+      gameScores.add(null);
     }
+    
+    // Actualizar la puntuación
+    gameScores[gameIndex] = score;
+    
+    // Calcular la puntuación total
+    final totalScore = gameScores.fold(0, (sum, s) => sum + (s ?? 0));
+    
+    // Actualizar el equipo
+    _teams[teamIndex] = Team(
+      id: team.id,
+      name: team.name,
+      teamColor: team.teamColor,
+      totalScore: totalScore,
+      roundPoints: team.roundPoints,
+      gameScores: gameScores,
+    );
+    
+    _saveTeams();
+    notifyListeners();
   }
-
+  
   void updateTeamRoundPoints(int teamId, int points) {
     final teamIndex = _teams.indexWhere((team) => team.id == teamId);
-    if (teamIndex != -1) {
-      _teams[teamIndex].roundPoints = points;
-      notifyListeners();
+    if (teamIndex == -1) return;
+    
+    final team = _teams[teamIndex];
+    _teams[teamIndex] = Team(
+      id: team.id,
+      name: team.name,
+      teamColor: team.teamColor,
+      totalScore: team.totalScore,
+      roundPoints: points,
+      gameScores: team.gameScores,
+    );
+    
+    _saveTeams();
+    notifyListeners();
+  }
+  
+  void updateTeamColor(int teamId, Color color) {
+    final teamIndex = _teams.indexWhere((team) => team.id == teamId);
+    if (teamIndex == -1) return;
+    
+    final team = _teams[teamIndex];
+    
+    // Como no podemos modificar el color directamente, creamos un nuevo equipo
+    _teams[teamIndex] = Team(
+      id: team.id,
+      name: team.name,
+      teamColor: color,
+      totalScore: team.totalScore,
+      roundPoints: team.roundPoints,
+      gameScores: team.gameScores,
+    );
+    
+    _saveTeams();
+    notifyListeners();
+  }
+  
+  void updateTeamName(int teamId, String name) {
+    final teamIndex = _teams.indexWhere((team) => team.id == teamId);
+    if (teamIndex == -1) return;
+    
+    final team = _teams[teamIndex];
+    
+    // Como no podemos modificar el nombre directamente, creamos un nuevo equipo
+    _teams[teamIndex] = Team(
+      id: team.id,
+      name: name,
+      teamColor: team.teamColor,
+      totalScore: team.totalScore,
+      roundPoints: team.roundPoints,
+      gameScores: team.gameScores,
+    );
+    
+    _saveTeams();
+    notifyListeners();
+  }
+  
+  // Método privado para guardar equipos
+  Future<void> _saveTeams() async {
+    try {
+      await StorageService.saveTeams(_teams);
+    } catch (e) {
+      debugPrint('Error saving teams: $e');
     }
   }
 }

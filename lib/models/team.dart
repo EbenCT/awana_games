@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
 // lib/models/team.dart
+import 'package:flutter/material.dart';
+
 class Team {
   final int id;
   final String name;
   final Color teamColor;
-  int totalScore;
-  int roundPoints;
-  List<int?> gameScores;
+  final int totalScore;
+   int roundPoints;
+  final List<int?> gameScores;
 
   Team({
     required this.id,
@@ -30,5 +31,10 @@ class Team {
       roundPoints: roundPoints ?? this.roundPoints,
       gameScores: gameScores ?? this.gameScores,
     );
+  }
+
+  @override
+  String toString() {
+    return 'Team{id: $id, name: $name, totalScore: $totalScore, roundPoints: $roundPoints, gameScores: $gameScores}';
   }
 }
