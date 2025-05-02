@@ -9,7 +9,8 @@ class StorageService {
   static const String _teamsKey = 'teams';
   static const String _gamesKey = 'games';
   static const String _maxGridNumbersKey = 'maxGridNumbers';
-  
+  static const String _configStateKey = 'configState'; // Nueva clave para el estado de configuración
+
   // Guardar equipos
   static Future<void> saveTeams(List<Team> teams) async {
     final prefs = await SharedPreferences.getInstance();
@@ -21,17 +22,14 @@ class StorageService {
       'roundPoints': team.roundPoints,
       'gameScores': team.gameScores,
     }).toList();
-    
     await prefs.setString(_teamsKey, jsonEncode(teamsData));
   }
-  
+
   // Cargar equipos
   static Future<List<Team>?> loadTeams() async {
     final prefs = await SharedPreferences.getInstance();
     final teamsString = prefs.getString(_teamsKey);
-    
     if (teamsString == null) return null;
-    
     try {
       final List<dynamic> teamsData = jsonDecode(teamsString);
       return teamsData.map((data) => Team(
@@ -47,7 +45,7 @@ class StorageService {
       return null;
     }
   }
-  
+
   // Guardar juegos
   static Future<void> saveGames(List<Game> games) async {
     final prefs = await SharedPreferences.getInstance();
@@ -58,17 +56,14 @@ class StorageService {
       'isCurrent': game.isCurrent,
       'type': game.type.index,
     }).toList();
-    
     await prefs.setString(_gamesKey, jsonEncode(gamesData));
   }
-  
+
   // Cargar juegos
   static Future<List<Game>?> loadGames() async {
     final prefs = await SharedPreferences.getInstance();
     final gamesString = prefs.getString(_gamesKey);
-    
     if (gamesString == null) return null;
-    
     try {
       final List<dynamic> gamesData = jsonDecode(gamesString);
       return gamesData.map((data) => Game(
@@ -83,24 +78,37 @@ class StorageService {
       return null;
     }
   }
-  
+
   // Guardar configuración de numeración máxima
   static Future<void> saveMaxGridNumbers(int maxNumbers) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_maxGridNumbersKey, maxNumbers);
   }
-  
+
   // Cargar configuración de numeración máxima
   static Future<int?> loadMaxGridNumbers() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_maxGridNumbersKey);
   }
-  
+
+  // Nuevo: Guardar estado de configuración
+  static Future<void> saveConfigState(bool isConfigured) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_configStateKey, isConfigured);
+  }
+
+  // Nuevo: Cargar estado de configuración
+  static Future<bool?> loadConfigState() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_configStateKey);
+  }
+
   // Limpiar todos los datos guardados
   static Future<void> clearAllData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_teamsKey);
     await prefs.remove(_gamesKey);
     await prefs.remove(_maxGridNumbersKey);
+    await prefs.remove(_configStateKey); // Incluir la nueva clave
   }
 }

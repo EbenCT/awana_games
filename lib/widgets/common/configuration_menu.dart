@@ -21,7 +21,7 @@ class ConfigurationMenu extends StatelessWidget {
   void _showConfigMenu(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
-
+    
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -48,6 +48,7 @@ class ConfigurationMenu extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          
           // Opciones de configuración
           ListTile(
             leading: const CircleAvatar(
@@ -66,6 +67,21 @@ class ConfigurationMenu extends StatelessWidget {
               );
             },
           ),
+          
+          // Nueva opción para reconfigurar juegos
+          ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Colors.amber,
+              child: Icon(Icons.sports_esports, color: Colors.white),
+            ),
+            title: const Text('Configurar Juegos'),
+            subtitle: const Text('Modificar cantidad y nombres de juegos'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/game_config');
+            },
+          ),
+          
           ListTile(
             leading: const CircleAvatar(
               backgroundColor: Colors.purple,
@@ -78,6 +94,7 @@ class ConfigurationMenu extends StatelessWidget {
               _showResetConfirmationDialog(context, teamsProvider, gameProvider);
             },
           ),
+          
           ListTile(
             leading: const CircleAvatar(
               backgroundColor: Colors.orange,
@@ -90,6 +107,7 @@ class ConfigurationMenu extends StatelessWidget {
               _showClearDataConfirmationDialog(context);
             },
           ),
+          
           const SizedBox(height: 16),
         ],
       ),
@@ -118,16 +136,9 @@ class ConfigurationMenu extends StatelessWidget {
             onPressed: () {
               teamsProvider.resetScores();
               gameProvider.resetGames();
-              gameProvider.addGame(); // Añadir un juego inicial
               Navigator.pop(context);
-              
-              // Mostrar mensaje de confirmación
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Juego reiniciado correctamente'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              // Navegar a la pantalla de configuración de juegos
+              Navigator.pushNamed(context, '/game_config');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -157,7 +168,6 @@ class ConfigurationMenu extends StatelessWidget {
             onPressed: () async {
               await StorageService.clearAllData();
               Navigator.pop(context);
-              
               // Mostrar mensaje de confirmación
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -166,9 +176,8 @@ class ConfigurationMenu extends StatelessWidget {
                     backgroundColor: Colors.green,
                   ),
                 );
-                
-                // Reiniciar la aplicación (opcional)
-                // Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                // Reiniciar la aplicación
+                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
               }
             },
             style: ElevatedButton.styleFrom(

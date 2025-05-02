@@ -36,6 +36,14 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       for (var team in teams) {
         currentGameScores[team.id] = 0;
       }
+      
+      // Inicializar el tipo de juego según el juego actual
+      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+      if (gameProvider.currentGame != null) {
+        setState(() {
+          activeGameType = gameProvider.currentGame!.type;
+        });
+      }
     });
   }
 
@@ -53,11 +61,12 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   }
 
   void _showEditGameNameDialog(BuildContext context, Game game) {
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (context) => EditGameDialog(
         game: game,
-        gameIndex: Provider.of<GameProvider>(context, listen: false).games.length - 1,
+        gameIndex: gameProvider.currentGameIndex,
       ),
     );
   }
@@ -67,6 +76,12 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       activeGameType = type;
       selectedNumbers.clear();
     });
+    
+    // Actualizar el tipo de juego en el provider
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    if (gameProvider.currentGame != null) {
+      gameProvider.updateGameType(gameProvider.currentGameIndex, type);
+    }
   }
 
   void _onNumberSelected(int number) {
@@ -90,8 +105,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           // Si hay 3 equipos en primer lugar
           for (var teamId in selectedTeams) {
             _updateCurrentGameScore(teamId, points);
-            final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
-            teamsProvider.updateScore(teamId, gameIndex, points);
+            final gameProvider = Provider.of<GameProvider>(context, listen: false);
+            teamsProvider.updateScore(teamId, gameProvider.currentGameIndex, points);
             assignedTeams.add(teamId);
           }
           
@@ -99,7 +114,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           final remainingTeam = teamsProvider.teams
               .firstWhere((team) => !selectedTeams.contains(team.id));
           _updateCurrentGameScore(remainingTeam.id, 75);
-          teamsProvider.updateScore(remainingTeam.id, teamsProvider.teams.length - 1, 75);
+          final gameProvider = Provider.of<GameProvider>(context, listen: false);
+          teamsProvider.updateScore(remainingTeam.id, gameProvider.currentGameIndex, 75);
           assignedTeams.add(remainingTeam.id);
           
           setState(() {
@@ -115,44 +131,45 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
         points = 50;
         break;
     }
-
+    
     // Asignar puntos a los equipos seleccionados
     for (var teamId in selectedTeams) {
       _updateCurrentGameScore(teamId, points);
-      final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
-      teamsProvider.updateScore(teamId, gameIndex, points);
+      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+      teamsProvider.updateScore(teamId, gameProvider.currentGameIndex, points);
       assignedTeams.add(teamId);
     }
-
+    
     final remainingTeams = teamsProvider.teams
         .where((team) => !assignedTeams.contains(team.id))
         .toList();
-
+    
     if (currentStage == 2 && remainingTeams.length == 1) {
       // Si solo queda un equipo después de asignar el segundo lugar
       _updateCurrentGameScore(remainingTeams.first.id, 50);
-      final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
-      teamsProvider.updateScore(remainingTeams.first.id, gameIndex, 50);
+      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+      teamsProvider.updateScore(remainingTeams.first.id, gameProvider.currentGameIndex, 50);
       assignedTeams.add(remainingTeams.first.id);
+      
       setState(() {
         allTeamsAssigned = true;
       });
     } else if (currentStage == 3 || (currentStage == 2 && remainingTeams.length == 1)) {
       if (remainingTeams.length == 1) {
         _updateCurrentGameScore(remainingTeams.first.id, 25);
-        final gameIndex = Provider.of<GameProvider>(context, listen: false).games.length - 1;
-        teamsProvider.updateScore(remainingTeams.first.id, gameIndex, 25);
+        final gameProvider = Provider.of<GameProvider>(context, listen: false);
+        teamsProvider.updateScore(remainingTeams.first.id, gameProvider.currentGameIndex, 25);
         assignedTeams.add(remainingTeams.first.id);
       }
     }
-
+    
     // Verificar si todos los equipos tienen puntaje asignado
     if (assignedTeams.length == 4) {
       setState(() {
         allTeamsAssigned = true;
       });
     }
-
+    
     // Avanzar al siguiente paso
     setState(() {
       if (currentStage < 3 && !allTeamsAssigned) {
@@ -162,39 +179,54 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     });
   }
 
-  void _resetGame(GameProvider gameProvider) {
-  gameProvider.addGame();
-  setState(() {
-    currentStage = 1;
-    selectedTeams.clear();
-    assignedTeams.clear();
-    allTeamsAssigned = false;
-    roundCalculated = false;
-    // Resetear puntajes del juego actual
-    currentGameScores.clear();
-    final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
-    for (var team in teams) {
-      currentGameScores[team.id] = 0;
-      Provider.of<TeamsProvider>(context, listen: false)
-          .updateTeamRoundPoints(team.id, 0);
+  void _nextGame(GameProvider gameProvider) {
+    // Marcar el juego actual como completado
+    gameProvider.markGameAsCompleted(gameProvider.currentGameIndex);
+    
+    // Reiniciar el estado del juego
+    setState(() {
+      currentStage = 1;
+      selectedTeams.clear();
+      assignedTeams.clear();
+      allTeamsAssigned = false;
+      roundCalculated = false;
+      
+      // Resetear puntajes del juego actual
+      currentGameScores.clear();
+      final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
+      for (var team in teams) {
+        currentGameScores[team.id] = 0;
+        Provider.of<TeamsProvider>(context, listen: false)
+            .updateTeamRoundPoints(team.id, 0);
+      }
+      
+      // Limpiar números seleccionados pero mantener el máximo de la grilla
+      selectedNumbers.clear();
+      
+      // Actualizar el tipo de juego según el nuevo juego actual
+      if (gameProvider.currentGame != null) {
+        activeGameType = gameProvider.currentGame!.type;
+      }
+    });
+    
+    // Si no hay más juegos, ir a la tabla de posiciones
+    if (!gameProvider.hasNextGame()) {
+      Navigator.of(context).pushReplacementNamed('/standings');
     }
-    // Limpiar números seleccionados pero mantener el máximo de la grilla
-    selectedNumbers.clear();
-  });
-}
+  }
 
   void _calculateRoundResults(TeamsProvider teamsProvider, GameProvider gameProvider) {
     // Ordenar equipos por puntuación actual
     final List<Team> sortedTeams = List.from(teamsProvider.teams)
       ..sort((a, b) => b.roundPoints.compareTo(a.roundPoints));
-
+    
     int currentRank = 1;
     int currentScore = sortedTeams[0].roundPoints;
     Map<int, int> pointsForRank = {1: 100, 2: 75, 3: 50, 4: 25};
-
+    
     // Obtener el índice del juego actual
-    final gameIndex = gameProvider.games.length - 1;
-
+    final gameIndex = gameProvider.currentGameIndex;
+    
     for (int i = 0; i < sortedTeams.length; i++) {
       if (sortedTeams[i].roundPoints < currentScore) {
         currentRank = i + 1;
@@ -209,7 +241,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
         points
       );
     }
-
+    
     setState(() {
       roundCalculated = true;
       allTeamsAssigned = true;
@@ -220,105 +252,110 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   Widget build(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context);
     final gameProvider = Provider.of<GameProvider>(context);
-    final currentGame = gameProvider.games.isNotEmpty ? gameProvider.games.last : null;
-
-    return Scaffold(
-      appBar: GameAppBar(
-        currentGame: currentGame,
-        onEditGame: () => _showEditGameNameDialog(context, currentGame!),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                GameTypeSelector(
-                  selectedType: activeGameType,
-                  onTypeSelected: _onGameTypeChanged,
-                ),
-                const SizedBox(height: 16),
-                if (activeGameType == GameType.normal)
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Contorno del texto con duplicados
-                      Text(
-                        _getStageText(),
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          foreground: Paint()
-                            ..style = PaintingStyle.stroke
-                            ..strokeWidth = 6
-                            ..color = Colors.black, // Contorno negro
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      // Texto principal encima del contorno
-                      Text(
-                        _getStageText(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.yellow, // Color principal
-                          shadows: [
-                            Shadow(
-                              blurRadius: 4.0,
-                              color: Colors.black26,
-                              offset: Offset(2.0, 2.0),
-                            ),
-                          ],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+    final currentGame = gameProvider.currentGame;
+    
+    return WillPopScope(
+      // Evitar que se pueda volver atrás con el botón físico
+      onWillPop: () async => false,
+      child: Scaffold(
+        appBar: GameAppBar(
+          currentGame: currentGame,
+          onEditGame: currentGame != null ? () => _showEditGameNameDialog(context, currentGame) : null,
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  GameTypeSelector(
+                    selectedType: activeGameType,
+                    onTypeSelected: _onGameTypeChanged,
                   ),
+                  const SizedBox(height: 16),
+                  if (activeGameType == GameType.normal)
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Contorno del texto con duplicados
+                        Text(
+                          _getStageText(),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = 6
+                              ..color = Colors.black, // Contorno negro
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        // Texto principal encima del contorno
+                        Text(
+                          _getStageText(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.yellow, // Color principal
+                            shadows: [
+                              Shadow(
+                                blurRadius: 4.0,
+                                color: Colors.black26,
+                                offset: Offset(2.0, 2.0),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                 ],
+              ),
             ),
-          ),
-          Expanded(
-            child: GameBody(
-              teams: teamsProvider.teams,
-              activeGameType: activeGameType,
-              assignedTeams: assignedTeams,
-              selectedTeams: selectedTeams,
-              currentGameScores: currentGameScores,
-              roundCalculated: roundCalculated,
-              onTeamRoundPointsChanged: (teamId, change) {
-                setState(() {               
-                  final team = teamsProvider.teams.firstWhere((t) => t.id == teamId);
-                  final int  newPoints = team.roundPoints + change;
-                  if (newPoints >= 0) {
-                    teamsProvider.updateTeamRoundPoints(teamId, newPoints);
-                  }
-                });
-              },
-              onTeamSelected: (teamId, isSelected) {
-                setState(() {
-                  if (isSelected) {
-                    selectedTeams.add(teamId);
-                  } else {
-                    selectedTeams.remove(teamId);
-                  }
-                });
-              },
-              selectedNumbers: selectedNumbers,
-              onNumberSelected: _onNumberSelected,
-              maxGridNumbers: gameProvider.maxGridNumbers,
-              onAddNumber: () => gameProvider.incrementMaxNumbers(),
+            Expanded(
+              child: GameBody(
+                teams: teamsProvider.teams,
+                activeGameType: activeGameType,
+                assignedTeams: assignedTeams,
+                selectedTeams: selectedTeams,
+                currentGameScores: currentGameScores,
+                roundCalculated: roundCalculated,
+                onTeamRoundPointsChanged: (teamId, change) {
+                  setState(() {
+                    final team = teamsProvider.teams.firstWhere((t) => t.id == teamId);
+                    final int newPoints = team.roundPoints + change;
+                    if (newPoints >= 0) {
+                      teamsProvider.updateTeamRoundPoints(teamId, newPoints);
+                    }
+                  });
+                },
+                onTeamSelected: (teamId, isSelected) {
+                  setState(() {
+                    if (isSelected) {
+                      selectedTeams.add(teamId);
+                    } else {
+                      selectedTeams.remove(teamId);
+                    }
+                  });
+                },
+                selectedNumbers: selectedNumbers,
+                onNumberSelected: _onNumberSelected,
+                maxGridNumbers: gameProvider.maxGridNumbers,
+                onAddNumber: () => gameProvider.incrementMaxNumbers(),
+              ),
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: GameBottomBar(
-        activeGameType: activeGameType,
-        roundCalculated: roundCalculated,
-        allTeamsAssigned: allTeamsAssigned,
-        hasSelectedTeams: selectedTeams.isNotEmpty,
-        onAssignPosition: () => _assignPoints(teamsProvider),
-        onCalculateResult: () => _calculateRoundResults(teamsProvider, gameProvider),
-        onNextGame: () => _resetGame(gameProvider),
+          ],
+        ),
+        bottomNavigationBar: GameBottomBar(
+          activeGameType: activeGameType,
+          roundCalculated: roundCalculated,
+          allTeamsAssigned: allTeamsAssigned,
+          hasSelectedTeams: selectedTeams.isNotEmpty,
+          onAssignPosition: () => _assignPoints(teamsProvider),
+          onCalculateResult: () => _calculateRoundResults(teamsProvider, gameProvider),
+          onNextGame: () => _nextGame(gameProvider),
+          isLastGame: !gameProvider.hasNextGame(),
+        ),
       ),
     );
   }

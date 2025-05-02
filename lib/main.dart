@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
   final GameProvider gameProvider;
   
   const MyApp({
-    Key? key, 
+    Key? key,
     required this.teamsProvider,
     required this.gameProvider,
   }) : super(key: key);
@@ -47,7 +47,9 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         onGenerateRoute: AppRoutes.generateRoute,
+        // Siempre iniciamos en la pantalla principal
         initialRoute: '/',
+        routes: AppRoutes.routes,
       ),
     );
   }

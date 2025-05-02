@@ -4,12 +4,12 @@ import '../../models/game.dart';
 
 class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Game? currentGame;
-  final VoidCallback onEditGame;
+  final VoidCallback? onEditGame; // Cambiar a que acepte nulo
 
   const GameAppBar({
     Key? key,
     required this.currentGame,
-    required this.onEditGame,
+    this.onEditGame, // Hacer opcional
   }) : super(key: key);
 
   @override
@@ -21,7 +21,7 @@ class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: onEditGame,
+                  onTap: onEditGame, // Ya acepta nulo
                   borderRadius: BorderRadius.circular(16),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -39,7 +39,8 @@ class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.edit, size: 16),
+                        if (onEditGame != null) // Solo mostrar el icono si hay una función
+                          const Icon(Icons.edit, size: 16),
                       ],
                     ),
                   ),

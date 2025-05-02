@@ -7,16 +7,16 @@ class NavigationHeader extends StatelessWidget {
   final Game currentGame;
   final int currentGameIndex;
   final int gamesLength;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
+  final VoidCallback? onPrevious; // Cambiar a que acepte nulo
+  final VoidCallback? onNext;     // Cambiar a que acepte nulo
 
   const NavigationHeader({
     Key? key,
     required this.currentGame,
     required this.currentGameIndex,
     required this.gamesLength,
-    required this.onPrevious,
-    required this.onNext,
+    this.onPrevious, // Hacer opcional
+    this.onNext,     // Hacer opcional
   }) : super(key: key);
 
   @override
@@ -26,7 +26,8 @@ class NavigationHeader extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.chevron_left),
-          onPressed: currentGameIndex > 0 ? onPrevious : null,
+          onPressed: onPrevious, // Ya acepta nulo
+          color: onPrevious != null ? null : Colors.grey[400], // Cambiar color si está deshabilitado
         ),
         Expanded(
           child: Column(
@@ -63,7 +64,8 @@ class NavigationHeader extends StatelessWidget {
         ),
         IconButton(
           icon: const Icon(Icons.chevron_right),
-          onPressed: currentGameIndex < gamesLength - 1 ? onNext : null,
+          onPressed: onNext, // Ya acepta nulo
+          color: onNext != null ? null : Colors.grey[400], // Cambiar color si está deshabilitado
         ),
       ],
     );

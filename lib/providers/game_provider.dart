@@ -9,17 +9,31 @@ class GameProvider extends ChangeNotifier {
   List<int> _selectedNumbers = []; // Mantiene los números seleccionados
   bool _isLoading = false;
   bool _isInitialized = false;
-  
+  bool _isConfigured = false; // Indica si la configuración inicial se ha completado
+
   List<Game> get games => _games;
   int get maxGridNumbers => _maxGridNumbers;
   List<int> get selectedNumbers => _selectedNumbers;
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
+  bool get isConfigured => _isConfigured;
   
+  // Obtener el índice del juego actual
+  int get currentGameIndex {
+    final currentIndex = _games.indexWhere((game) => game.isCurrent);
+    return currentIndex >= 0 ? currentIndex : 0;
+  }
+  
+  // Obtener el juego actual
+  Game? get currentGame {
+    if (_games.isEmpty) return null;
+    final currentIndex = _games.indexWhere((game) => game.isCurrent);
+    return currentIndex >= 0 ? _games[currentIndex] : _games.first;
+  }
+
   // Inicializar el proveedor y cargar datos guardados
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
     _isLoading = true;
     
     try {
@@ -28,6 +42,13 @@ class GameProvider extends ChangeNotifier {
       if (savedGames != null && savedGames.isNotEmpty) {
         _games.clear();
         _games.addAll(savedGames);
+        
+        // Si no hay juego marcado como actual, marcar el primero
+        if (!_games.any((game) => game.isCurrent)) {
+          _setGameAsCurrent(0);
+        }
+        
+        _isConfigured = true; // Si hay juegos guardados, consideramos que está configurado
       }
       
       // Cargar la configuración de número máximo
@@ -36,36 +57,68 @@ class GameProvider extends ChangeNotifier {
         _maxGridNumbers = savedMaxNumbers;
       }
       
+      // Cargar estado de configuración
+      final configState = await StorageService.loadConfigState();
+      if (configState != null) {
+        _isConfigured = configState;
+      }
+      
       _isInitialized = true;
     } catch (e) {
       debugPrint('Error initializing GameProvider: $e');
     } finally {
       _isLoading = false;
-      // Nota: No llamamos a notifyListeners() aquí porque puede causar problemas durante la inicialización
+      notifyListeners();
     }
   }
-  
+
+  // Método para configurar inicialmente los juegos
+  void configureGames(List<String> gameNames) {
+    _games.clear();
+    
+    for (int i = 0; i < gameNames.length; i++) {
+      if (gameNames[i].isNotEmpty) {
+        _games.add(Game(
+          id: i + 1,
+          name: gameNames[i],
+          type: GameType.normal, // Por defecto todos son juegos normales
+          isCompleted: false,
+          isCurrent: i == 0, // El primer juego es el actual
+        ));
+      }
+    }
+    
+    _isConfigured = true;
+    _saveGames();
+    _saveConfigState();
+    notifyListeners();
+  }
+
   void addGame() {
     final nextGameIndex = _games.length + 1;
     _games.add(Game(
       id: nextGameIndex,
       name: 'Juego $nextGameIndex',
       type: GameType.normal,
+      isCurrent: _games.isEmpty, // Si es el primer juego, marcarlo como actual
     ));
+
     _selectedNumbers.clear(); // Limpiar números seleccionados al añadir nuevo juego
     _saveGames();
     notifyListeners();
   }
-  
+
   void resetGames() {
     _games.clear();
     _selectedNumbers.clear();
     _maxGridNumbers = 20; // Resetear a 20 al iniciar nuevos juegos
+    _isConfigured = false; // Resetear el estado de configuración
     _saveGames();
     _saveMaxGridNumbers();
+    _saveConfigState();
     notifyListeners();
   }
-  
+
   // Método para incrementar el máximo de números
   void incrementMaxNumbers() {
     if (_maxGridNumbers < 50) {
@@ -74,13 +127,13 @@ class GameProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   // Método para actualizar números seleccionados
   void updateSelectedNumbers(List<int> numbers) {
     _selectedNumbers = numbers;
     notifyListeners();
   }
-  
+
   void updateGameName(int gameIndex, String newName) {
     if (gameIndex >= 0 && gameIndex < _games.length) {
       // Nota: Como Game es inmutable, necesitamos crear una nueva instancia
@@ -95,7 +148,7 @@ class GameProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   void updateGameType(int gameIndex, GameType type) {
     if (gameIndex >= 0 && gameIndex < _games.length) {
       _games[gameIndex] = Game(
@@ -109,35 +162,86 @@ class GameProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   void markGameAsCompleted(int gameIndex) {
     if (gameIndex >= 0 && gameIndex < _games.length) {
+      // Marcar el juego actual como completado
       _games[gameIndex] = Game(
         id: _games[gameIndex].id,
         name: _games[gameIndex].name,
         type: _games[gameIndex].type,
         isCompleted: true,
-        isCurrent: false,
+        isCurrent: false, // Ya no es el actual
       );
+      
+      // Si hay un siguiente juego, marcarlo como actual
+      if (gameIndex < _games.length - 1) {
+        _setGameAsCurrent(gameIndex + 1);
+      }
+      
       _saveGames();
       notifyListeners();
     }
   }
-  
-  void setCurrentGame(int gameIndex) {
-    for (int i = 0; i < _games.length; i++) {
-      _games[i] = Game(
-        id: _games[i].id,
-        name: _games[i].name,
-        type: _games[i].type,
-        isCompleted: _games[i].isCompleted,
-        isCurrent: i == gameIndex,
-      );
+
+  // Método privado para establecer un juego como actual
+  void _setGameAsCurrent(int gameIndex) {
+    if (gameIndex >= 0 && gameIndex < _games.length) {
+      for (int i = 0; i < _games.length; i++) {
+        _games[i] = Game(
+          id: _games[i].id,
+          name: _games[i].name,
+          type: _games[i].type,
+          isCompleted: _games[i].isCompleted,
+          isCurrent: i == gameIndex,
+        );
+      }
     }
-    _saveGames();
-    notifyListeners();
+  }
+
+  // Avanzar al siguiente juego
+  bool moveToNextGame() {
+    final currentIndex = _games.indexWhere((game) => game.isCurrent);
+    
+    if (currentIndex >= 0 && currentIndex < _games.length - 1) {
+      // Marcar el juego actual como completado
+      _games[currentIndex] = Game(
+        id: _games[currentIndex].id,
+        name: _games[currentIndex].name,
+        type: _games[currentIndex].type,
+        isCompleted: true,
+        isCurrent: false,
+      );
+      
+      // Establecer el siguiente juego como actual
+      _games[currentIndex + 1] = Game(
+        id: _games[currentIndex + 1].id,
+        name: _games[currentIndex + 1].name,
+        type: _games[currentIndex + 1].type,
+        isCompleted: false,
+        isCurrent: true,
+      );
+      
+      _saveGames();
+      notifyListeners();
+      return true; // Indica que se pudo avanzar
+    }
+    
+    return false; // No hay más juegos
+  }
+
+  // Verificar si hay más juegos después del actual
+  bool hasNextGame() {
+    final currentIndex = _games.indexWhere((game) => game.isCurrent);
+    return currentIndex >= 0 && currentIndex < _games.length - 1;
   }
   
+  // Verificar si hay juegos anteriores al actual
+  bool hasPreviousGame() {
+    final currentIndex = _games.indexWhere((game) => game.isCurrent);
+    return currentIndex > 0;
+  }
+
   // Métodos privados para guardar datos
   Future<void> _saveGames() async {
     try {
@@ -146,12 +250,20 @@ class GameProvider extends ChangeNotifier {
       debugPrint('Error saving games: $e');
     }
   }
-  
+
   Future<void> _saveMaxGridNumbers() async {
     try {
       await StorageService.saveMaxGridNumbers(_maxGridNumbers);
     } catch (e) {
       debugPrint('Error saving max grid numbers: $e');
+    }
+  }
+  
+  Future<void> _saveConfigState() async {
+    try {
+      await StorageService.saveConfigState(_isConfigured);
+    } catch (e) {
+      debugPrint('Error saving config state: $e');
     }
   }
 }

@@ -17,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  
+
   @override
   void initState() {
     super.initState();
@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       duration: const Duration(milliseconds: 1500),
     )..forward();
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
     final size = MediaQuery.of(context).size;
     final isLandscape = size.width > size.height;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     bottom: size.height / 2,
                     child: Transform.translate(
                       offset: Offset(
-                        -100 * (1 - _animationController.value), 
+                        -100 * (1 - _animationController.value),
                         -100 * (1 - _animationController.value)
                       ),
                       child: Container(
@@ -86,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     bottom: size.height / 2,
                     child: Transform.translate(
                       offset: Offset(
-                        100 * (1 - _animationController.value), 
+                        100 * (1 - _animationController.value),
                         -100 * (1 - _animationController.value)
                       ),
                       child: Container(
@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     bottom: 0,
                     child: Transform.translate(
                       offset: Offset(
-                        -100 * (1 - _animationController.value), 
+                        -100 * (1 - _animationController.value),
                         100 * (1 - _animationController.value)
                       ),
                       child: Container(
@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     bottom: 0,
                     child: Transform.translate(
                       offset: Offset(
-                        100 * (1 - _animationController.value), 
+                        100 * (1 - _animationController.value),
                         100 * (1 - _animationController.value)
                       ),
                       child: Container(
@@ -143,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               );
             },
           ),
-          
           // Logo and content
           SafeArea(
             child: Center(
@@ -212,9 +211,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                   ),
-                  
                   const SizedBox(height: 48),
-                  
                   // Animated game icons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -239,9 +236,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           },
                           child: CircleAvatar(
                             backgroundColor: [
-                              Colors.red[400], 
-                              Colors.yellow[600], 
-                              Colors.green[400], 
+                              Colors.red[400],
+                              Colors.yellow[600],
+                              Colors.green[400],
                               Colors.blue[400]
                             ][index],
                             radius: 28,
@@ -259,8 +256,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
           ),
-          
-          // Bottom button with animation - Usando AnimatedOpacity en lugar de TweenAnimationBuilder
+          // Bottom button with animation
           Positioned(
             left: 24,
             right: 24,
@@ -281,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   // Verificar si hay juegos en curso
                   Consumer<GameProvider>(
                     builder: (context, gameProvider, child) {
-                      if (gameProvider.games.isNotEmpty) {
+                      if (gameProvider.games.isNotEmpty && gameProvider.isConfigured) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: PrimaryButton(
@@ -299,7 +295,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       return const SizedBox.shrink();
                     },
                   ),
-                  
                   // Botón de nuevo juego
                   PrimaryButton(
                     text: 'Nuevo Juego',
@@ -308,10 +303,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       // Reiniciar equipos y juegos
                       teamsProvider.resetScores();
                       gameProvider.resetGames();
-                      // Crear el primer juego
-                      gameProvider.addGame();
-                      // Navegar a la tabla de posiciones
-                      Navigator.of(context).pushNamed('/score');
+                      // Navegar a la pantalla de configuración
+                      Navigator.of(context).pushNamed('/game_config');
                     },
                     backgroundColor: Colors.purple,
                     fullWidth: true,

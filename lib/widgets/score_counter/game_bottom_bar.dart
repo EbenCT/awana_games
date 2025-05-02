@@ -10,6 +10,7 @@ class GameBottomBar extends StatelessWidget {
   final VoidCallback onAssignPosition;
   final VoidCallback onCalculateResult;
   final VoidCallback onNextGame;
+  final bool isLastGame;
 
   const GameBottomBar({
     Key? key,
@@ -20,13 +21,14 @@ class GameBottomBar extends StatelessWidget {
     required this.onAssignPosition,
     required this.onCalculateResult,
     required this.onNextGame,
+    this.isLastGame = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isLandscape = size.width > size.height;
-    
+
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.all(16.0),
@@ -46,7 +48,7 @@ class GameBottomBar extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildPortraitLayout() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -71,16 +73,16 @@ class GameBottomBar extends StatelessWidget {
           ),
         const SizedBox(height: 8),
         _buildAnimatedButton(
-          text: 'Próximo Juego',
-          icon: Icons.arrow_forward,
-          backgroundColor: Colors.blue,
+          text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
+          icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
+          backgroundColor: isLastGame ? Colors.purple : Colors.blue,
           isEnabled: allTeamsAssigned,
           onPressed: allTeamsAssigned ? onNextGame : null,
         ),
       ],
     );
   }
-  
+
   Widget _buildLandscapeLayout() {
     return Row(
       children: [
@@ -114,9 +116,9 @@ class GameBottomBar extends StatelessWidget {
           ),
         Expanded(
           child: _buildAnimatedButton(
-            text: 'Próximo Juego',
-            icon: Icons.arrow_forward,
-            backgroundColor: Colors.blue,
+            text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
+            icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
+            backgroundColor: isLastGame ? Colors.purple : Colors.blue,
             isEnabled: allTeamsAssigned,
             onPressed: allTeamsAssigned ? onNextGame : null,
           ),
@@ -124,7 +126,7 @@ class GameBottomBar extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildAnimatedButton({
     required String text,
     required IconData icon,
