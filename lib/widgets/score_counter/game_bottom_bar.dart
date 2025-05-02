@@ -11,6 +11,7 @@ class GameBottomBar extends StatelessWidget {
   final VoidCallback onCalculateResult;
   final VoidCallback onNextGame;
   final bool isLastGame;
+  final VoidCallback? onAddExtraGame; // Nueva propiedad para añadir juego extra
 
   const GameBottomBar({
     Key? key,
@@ -22,6 +23,7 @@ class GameBottomBar extends StatelessWidget {
     required this.onCalculateResult,
     required this.onNextGame,
     this.isLastGame = false,
+    this.onAddExtraGame, // Opcional, solo se usa en el último juego
   }) : super(key: key);
 
   @override
@@ -53,6 +55,7 @@ class GameBottomBar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Botones principales según el tipo de juego
         if (activeGameType == GameType.normal)
           _buildAnimatedButton(
             text: 'Asignar Posición',
@@ -71,7 +74,22 @@ class GameBottomBar extends StatelessWidget {
             isEnabled: true,
             onPressed: onCalculateResult,
           ),
+          
+        // Botón de añadir juego extra (solo en el último juego)
+        if (isLastGame && onAddExtraGame != null && allTeamsAssigned) ...[
+          const SizedBox(height: 8),
+          _buildAnimatedButton(
+            text: 'Añadir Juego Extra',
+            icon: Icons.add_circle,
+            backgroundColor: Colors.amber,
+            isEnabled: true,
+            onPressed: onAddExtraGame,
+          ),
+        ],
+          
         const SizedBox(height: 8),
+        
+        // Botón de siguiente juego o ver tabla final
         _buildAnimatedButton(
           text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
           icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
@@ -82,10 +100,11 @@ class GameBottomBar extends StatelessWidget {
       ],
     );
   }
-
+  
   Widget _buildLandscapeLayout() {
     return Row(
       children: [
+        // Primera columna: botones de acción según tipo de juego
         if (activeGameType == GameType.normal)
           Expanded(
             child: Padding(
@@ -114,13 +133,33 @@ class GameBottomBar extends StatelessWidget {
               ),
             ),
           ),
+          
+        // Segunda columna: juego extra (si es el último juego)
+        if (isLastGame && onAddExtraGame != null && allTeamsAssigned)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _buildAnimatedButton(
+                text: 'Añadir Juego Extra',
+                icon: Icons.add_circle,
+                backgroundColor: Colors.amber,
+                isEnabled: true,
+                onPressed: onAddExtraGame,
+              ),
+            ),
+          ),
+        
+        // Tercera columna: botón de siguiente juego o tabla final
         Expanded(
-          child: _buildAnimatedButton(
-            text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
-            icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
-            backgroundColor: isLastGame ? Colors.purple : Colors.blue,
-            isEnabled: allTeamsAssigned,
-            onPressed: allTeamsAssigned ? onNextGame : null,
+          child: Padding(
+            padding: EdgeInsets.only(left: isLastGame ? 0 : 8),
+            child: _buildAnimatedButton(
+              text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
+              icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
+              backgroundColor: isLastGame ? Colors.purple : Colors.blue,
+              isEnabled: allTeamsAssigned,
+              onPressed: allTeamsAssigned ? onNextGame : null,
+            ),
           ),
         ),
       ],

@@ -4,24 +4,32 @@ import '../../models/game.dart';
 
 class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Game? currentGame;
-  final VoidCallback? onEditGame; // Cambiar a que acepte nulo
+  final VoidCallback? onEditGame;
 
   const GameAppBar({
     Key? key,
     required this.currentGame,
-    this.onEditGame, // Hacer opcional
+    this.onEditGame,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.home),
+        tooltip: 'Volver al inicio',
+        onPressed: () {
+          // Mostrar diálogo de confirmación antes de volver
+          _showExitConfirmationDialog(context);
+        },
+      ),
       title: currentGame != null
           ? Hero(
               tag: 'game_title_${currentGame!.id}',
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: onEditGame, // Ya acepta nulo
+                  onTap: onEditGame,
                   borderRadius: BorderRadius.circular(16),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -39,7 +47,7 @@ class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        if (onEditGame != null) // Solo mostrar el icono si hay una función
+                        if (onEditGame != null)
                           const Icon(Icons.edit, size: 16),
                       ],
                     ),
@@ -64,6 +72,38 @@ class GameAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showExitConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Volver al inicio?'),
+        content: const Text(
+          'Si sales ahora, se guardarán los juegos completados pero perderás el progreso del juego actual si no ha sido finalizado.\n\n¿Estás seguro de querer volver a la pantalla principal?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamedAndRemoveUntil(
+                context, 
+                '/', 
+                (route) => false, // Elimina todas las rutas previas
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Volver al inicio'),
+          ),
+        ],
+      ),
     );
   }
 

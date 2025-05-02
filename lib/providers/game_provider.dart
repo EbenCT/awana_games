@@ -94,6 +94,7 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Añadir un nuevo juego
   void addGame() {
     final nextGameIndex = _games.length + 1;
     _games.add(Game(
@@ -104,6 +105,22 @@ class GameProvider extends ChangeNotifier {
     ));
 
     _selectedNumbers.clear(); // Limpiar números seleccionados al añadir nuevo juego
+    _saveGames();
+    notifyListeners();
+  }
+
+  // Añadir un juego extra (al final)
+  void addExtraGame(String name) {
+    final nextGameIndex = _games.length + 1;
+    final newGame = Game(
+      id: nextGameIndex,
+      name: name.isNotEmpty ? name : 'Juego Extra $nextGameIndex',
+      type: GameType.normal,
+      isCompleted: false,
+      isCurrent: false, // No es el actual todavía
+    );
+    
+    _games.add(newGame);
     _saveGames();
     notifyListeners();
   }
@@ -163,48 +180,28 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  // Solo marca el juego como completado sin cambiar el juego actual
   void markGameAsCompleted(int gameIndex) {
     if (gameIndex >= 0 && gameIndex < _games.length) {
-      // Marcar el juego actual como completado
       _games[gameIndex] = Game(
         id: _games[gameIndex].id,
         name: _games[gameIndex].name,
         type: _games[gameIndex].type,
         isCompleted: true,
-        isCurrent: false, // Ya no es el actual
+        isCurrent: _games[gameIndex].isCurrent, // Mantiene su estado actual
       );
-      
-      // Si hay un siguiente juego, marcarlo como actual
-      if (gameIndex < _games.length - 1) {
-        _setGameAsCurrent(gameIndex + 1);
-      }
       
       _saveGames();
       notifyListeners();
     }
   }
 
-  // Método privado para establecer un juego como actual
-  void _setGameAsCurrent(int gameIndex) {
-    if (gameIndex >= 0 && gameIndex < _games.length) {
-      for (int i = 0; i < _games.length; i++) {
-        _games[i] = Game(
-          id: _games[i].id,
-          name: _games[i].name,
-          type: _games[i].type,
-          isCompleted: _games[i].isCompleted,
-          isCurrent: i == gameIndex,
-        );
-      }
-    }
-  }
-
-  // Avanzar al siguiente juego
+  // Avanzar manualmente al siguiente juego
   bool moveToNextGame() {
     final currentIndex = _games.indexWhere((game) => game.isCurrent);
     
     if (currentIndex >= 0 && currentIndex < _games.length - 1) {
-      // Marcar el juego actual como completado
+      // Marcar el juego actual como completado y no actual
       _games[currentIndex] = Game(
         id: _games[currentIndex].id,
         name: _games[currentIndex].name,
@@ -228,6 +225,28 @@ class GameProvider extends ChangeNotifier {
     }
     
     return false; // No hay más juegos
+  }
+
+  // Método privado para establecer un juego como actual
+  void _setGameAsCurrent(int gameIndex) {
+    if (gameIndex >= 0 && gameIndex < _games.length) {
+      for (int i = 0; i < _games.length; i++) {
+        _games[i] = Game(
+          id: _games[i].id,
+          name: _games[i].name,
+          type: _games[i].type,
+          isCompleted: _games[i].isCompleted,
+          isCurrent: i == gameIndex,
+        );
+      }
+    }
+  }
+
+  // Establecer explícitamente el juego actual (método público)
+  void setCurrentGame(int gameIndex) {
+    _setGameAsCurrent(gameIndex);
+    _saveGames();
+    notifyListeners();
   }
 
   // Verificar si hay más juegos después del actual

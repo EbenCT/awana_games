@@ -179,42 +179,6 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     });
   }
 
-  void _nextGame(GameProvider gameProvider) {
-    // Marcar el juego actual como completado
-    gameProvider.markGameAsCompleted(gameProvider.currentGameIndex);
-    
-    // Reiniciar el estado del juego
-    setState(() {
-      currentStage = 1;
-      selectedTeams.clear();
-      assignedTeams.clear();
-      allTeamsAssigned = false;
-      roundCalculated = false;
-      
-      // Resetear puntajes del juego actual
-      currentGameScores.clear();
-      final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
-      for (var team in teams) {
-        currentGameScores[team.id] = 0;
-        Provider.of<TeamsProvider>(context, listen: false)
-            .updateTeamRoundPoints(team.id, 0);
-      }
-      
-      // Limpiar números seleccionados pero mantener el máximo de la grilla
-      selectedNumbers.clear();
-      
-      // Actualizar el tipo de juego según el nuevo juego actual
-      if (gameProvider.currentGame != null) {
-        activeGameType = gameProvider.currentGame!.type;
-      }
-    });
-    
-    // Si no hay más juegos, ir a la tabla de posiciones
-    if (!gameProvider.hasNextGame()) {
-      Navigator.of(context).pushReplacementNamed('/standings');
-    }
-  }
-
   void _calculateRoundResults(TeamsProvider teamsProvider, GameProvider gameProvider) {
     // Ordenar equipos por puntuación actual
     final List<Team> sortedTeams = List.from(teamsProvider.teams)
@@ -248,11 +212,109 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     });
   }
 
+  // Método para finalizar el juego actual y pasar al siguiente
+  void _nextGame(GameProvider gameProvider) {
+    // Obtener el índice actual antes de los cambios
+    final currentIndex = gameProvider.currentGameIndex;
+    
+    // Marcar el juego actual como completado (sin cambiar el juego actual)
+    gameProvider.markGameAsCompleted(currentIndex);
+    
+    // Verificar si hay más juegos
+    if (gameProvider.hasNextGame()) {
+      // Avanzar manualmente al siguiente juego en el provider
+      if (gameProvider.moveToNextGame()) {
+        // Reiniciar el estado del juego para el nuevo juego
+        setState(() {
+          currentStage = 1;
+          selectedTeams.clear();
+          assignedTeams.clear();
+          allTeamsAssigned = false;
+          roundCalculated = false;
+          
+          // Resetear puntajes del juego actual
+          currentGameScores.clear();
+          final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
+          for (var team in teams) {
+            currentGameScores[team.id] = 0;
+            Provider.of<TeamsProvider>(context, listen: false)
+                .updateTeamRoundPoints(team.id, 0);
+          }
+          
+          // Limpiar números seleccionados pero mantener el máximo de la grilla
+          selectedNumbers.clear();
+          
+          // Actualizar el tipo de juego según el nuevo juego actual
+          if (gameProvider.currentGame != null) {
+            activeGameType = gameProvider.currentGame!.type;
+          }
+        });
+      }
+    } else {
+      // Si no hay más juegos, ir a la tabla de posiciones
+      Navigator.of(context).pushReplacementNamed('/standings');
+    }
+  }
+
+  // Mostrar el diálogo para agregar un juego extra
+  void _showAddExtraGameDialog() {
+    final TextEditingController controller = TextEditingController(text: 'Juego Extra');
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Añadir Juego Extra'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Añadirás un juego extra al final de la lista. El juego actual se mantendrá como último hasta que lo finalices.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del juego extra',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Añadir el juego extra
+              final gameProvider = Provider.of<GameProvider>(context, listen: false);
+              gameProvider.addExtraGame(controller.text.trim());
+              Navigator.pop(context);
+              
+              // Mostrar mensaje de confirmación
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Juego extra añadido correctamente'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Añadir'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context);
     final gameProvider = Provider.of<GameProvider>(context);
     final currentGame = gameProvider.currentGame;
+    final isLastGame = !gameProvider.hasNextGame();
     
     return WillPopScope(
       // Evitar que se pueda volver atrás con el botón físico
@@ -354,7 +416,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           onAssignPosition: () => _assignPoints(teamsProvider),
           onCalculateResult: () => _calculateRoundResults(teamsProvider, gameProvider),
           onNextGame: () => _nextGame(gameProvider),
-          isLastGame: !gameProvider.hasNextGame(),
+          isLastGame: isLastGame,
+          onAddExtraGame: isLastGame ? _showAddExtraGameDialog : null, // Solo mostrar si es el último juego
         ),
       ),
     );
