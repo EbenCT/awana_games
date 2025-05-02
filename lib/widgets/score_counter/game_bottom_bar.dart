@@ -11,7 +11,7 @@ class GameBottomBar extends StatelessWidget {
   final VoidCallback onCalculateResult;
   final VoidCallback onNextGame;
   final bool isLastGame;
-  final VoidCallback? onAddExtraGame; // Nueva propiedad para añadir juego extra
+  final VoidCallback? onAddExtraGame;
 
   const GameBottomBar({
     Key? key,
@@ -23,7 +23,7 @@ class GameBottomBar extends StatelessWidget {
     required this.onCalculateResult,
     required this.onNextGame,
     this.isLastGame = false,
-    this.onAddExtraGame, // Opcional, solo se usa en el último juego
+    this.onAddExtraGame,
   }) : super(key: key);
 
   @override
@@ -52,118 +52,143 @@ class GameBottomBar extends StatelessWidget {
   }
 
   Widget _buildPortraitLayout() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Botones principales según el tipo de juego
-        if (activeGameType == GameType.normal)
-          _buildAnimatedButton(
-            text: 'Asignar Posición',
-            icon: Icons.emoji_events,
-            backgroundColor: Colors.green,
-            isEnabled: hasSelectedTeams && !allTeamsAssigned,
-            onPressed: hasSelectedTeams && !allTeamsAssigned
-                ? onAssignPosition
-                : null,
-          ),
-        if (activeGameType == GameType.rounds && !roundCalculated)
-          _buildAnimatedButton(
-            text: 'Calcular Resultado',
-            icon: Icons.calculate,
-            backgroundColor: Colors.green,
-            isEnabled: true,
-            onPressed: onCalculateResult,
-          ),
-          
-        // Botón de añadir juego extra (solo en el último juego)
-        if (isLastGame && onAddExtraGame != null && allTeamsAssigned) ...[
-          const SizedBox(height: 8),
-          _buildAnimatedButton(
-            text: 'Añadir Juego Extra',
-            icon: Icons.add_circle,
-            backgroundColor: Colors.amber,
-            isEnabled: true,
-            onPressed: onAddExtraGame,
-          ),
-        ],
-          
-        const SizedBox(height: 8),
-        
-        // Botón de siguiente juego o ver tabla final
-        _buildAnimatedButton(
+    // Si el juego está completado, mostrar botones de siguiente juego y/o juego extra
+    if (allTeamsAssigned) {
+      // En el último juego, mostrar ambos botones si está disponible la opción de juego extra
+      if (isLastGame && onAddExtraGame != null) {
+        return Row(
+          children: [
+            // Botón de añadir juego extra
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: _buildAnimatedButton(
+                  text: 'Añadir Juego Extra',
+                  icon: Icons.add_circle,
+                  backgroundColor: Colors.amber,
+                  isEnabled: true,
+                  onPressed: onAddExtraGame,
+                ),
+              ),
+            ),
+            // Botón de ver tabla final
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: _buildAnimatedButton(
+                  text: 'Ver Tabla Final',
+                  icon: Icons.leaderboard,
+                  backgroundColor: Colors.purple,
+                  isEnabled: true,
+                  onPressed: onNextGame,
+                ),
+              ),
+            ),
+          ],
+        );
+      } else {
+        // Si no es el último juego o no hay opción de juego extra, solo mostrar el botón de siguiente
+        return _buildAnimatedButton(
           text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
           icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
           backgroundColor: isLastGame ? Colors.purple : Colors.blue,
-          isEnabled: allTeamsAssigned,
-          onPressed: allTeamsAssigned ? onNextGame : null,
-        ),
-      ],
-    );
+          isEnabled: true,
+          onPressed: onNextGame,
+        );
+      }
+    } else {
+      // Si el juego no está completado, mostrar el botón de asignar posición o calcular resultado
+      if (activeGameType == GameType.normal) {
+        return _buildAnimatedButton(
+          text: 'Asignar Posición',
+          icon: Icons.emoji_events,
+          backgroundColor: Colors.green,
+          isEnabled: hasSelectedTeams && !allTeamsAssigned,
+          onPressed: hasSelectedTeams && !allTeamsAssigned ? onAssignPosition : null,
+        );
+      } else if (!roundCalculated) { // Juego por rondas y no calculado
+        return _buildAnimatedButton(
+          text: 'Calcular Resultado',
+          icon: Icons.calculate,
+          backgroundColor: Colors.green,
+          isEnabled: true,
+          onPressed: onCalculateResult,
+        );
+      } else {
+        // Caso poco probable pero por completitud
+        return const SizedBox.shrink();
+      }
+    }
   }
   
   Widget _buildLandscapeLayout() {
-    return Row(
-      children: [
-        // Primera columna: botones de acción según tipo de juego
-        if (activeGameType == GameType.normal)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _buildAnimatedButton(
-                text: 'Asignar Posición',
-                icon: Icons.emoji_events,
-                backgroundColor: Colors.green,
-                isEnabled: hasSelectedTeams && !allTeamsAssigned,
-                onPressed: hasSelectedTeams && !allTeamsAssigned
-                    ? onAssignPosition
-                    : null,
+    // La lógica es similar al diseño vertical, pero adaptada para horizontal
+    if (allTeamsAssigned) {
+      // En el último juego, mostrar ambos botones si está disponible la opción de juego extra
+      if (isLastGame && onAddExtraGame != null) {
+        return Row(
+          children: [
+            // Botón de añadir juego extra
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: _buildAnimatedButton(
+                  text: 'Añadir Juego Extra',
+                  icon: Icons.add_circle,
+                  backgroundColor: Colors.amber,
+                  isEnabled: true,
+                  onPressed: onAddExtraGame,
+                ),
               ),
             ),
-          ),
-        if (activeGameType == GameType.rounds && !roundCalculated)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _buildAnimatedButton(
-                text: 'Calcular Resultado',
-                icon: Icons.calculate,
-                backgroundColor: Colors.green,
-                isEnabled: true,
-                onPressed: onCalculateResult,
+            // Botón de ver tabla final
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: _buildAnimatedButton(
+                  text: 'Ver Tabla Final',
+                  icon: Icons.leaderboard,
+                  backgroundColor: Colors.purple,
+                  isEnabled: true,
+                  onPressed: onNextGame,
+                ),
               ),
             ),
-          ),
-          
-        // Segunda columna: juego extra (si es el último juego)
-        if (isLastGame && onAddExtraGame != null && allTeamsAssigned)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: _buildAnimatedButton(
-                text: 'Añadir Juego Extra',
-                icon: Icons.add_circle,
-                backgroundColor: Colors.amber,
-                isEnabled: true,
-                onPressed: onAddExtraGame,
-              ),
-            ),
-          ),
-        
-        // Tercera columna: botón de siguiente juego o tabla final
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(left: isLastGame ? 0 : 8),
-            child: _buildAnimatedButton(
-              text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
-              icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
-              backgroundColor: isLastGame ? Colors.purple : Colors.blue,
-              isEnabled: allTeamsAssigned,
-              onPressed: allTeamsAssigned ? onNextGame : null,
-            ),
-          ),
-        ),
-      ],
-    );
+          ],
+        );
+      } else {
+        // Si no es el último juego o no hay opción de juego extra, solo mostrar el botón de siguiente
+        return _buildAnimatedButton(
+          text: isLastGame ? 'Ver Tabla Final' : 'Siguiente Juego',
+          icon: isLastGame ? Icons.leaderboard : Icons.arrow_forward,
+          backgroundColor: isLastGame ? Colors.purple : Colors.blue,
+          isEnabled: true,
+          onPressed: onNextGame,
+        );
+      }
+    } else {
+      // Si el juego no está completado, mostrar el botón de asignar posición o calcular resultado
+      if (activeGameType == GameType.normal) {
+        return _buildAnimatedButton(
+          text: 'Asignar Posición',
+          icon: Icons.emoji_events,
+          backgroundColor: Colors.green,
+          isEnabled: hasSelectedTeams && !allTeamsAssigned,
+          onPressed: hasSelectedTeams && !allTeamsAssigned ? onAssignPosition : null,
+        );
+      } else if (!roundCalculated) { // Juego por rondas y no calculado
+        return _buildAnimatedButton(
+          text: 'Calcular Resultado',
+          icon: Icons.calculate,
+          backgroundColor: Colors.green,
+          isEnabled: true,
+          onPressed: onCalculateResult,
+        );
+      } else {
+        // Caso poco probable pero por completitud
+        return const SizedBox.shrink();
+      }
+    }
   }
 
   Widget _buildAnimatedButton({
