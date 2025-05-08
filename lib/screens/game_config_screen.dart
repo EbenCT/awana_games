@@ -1,8 +1,8 @@
 // lib/screens/game_config_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/game.dart';
 import '../providers/game_provider.dart';
-import '../widgets/common/primary_button.dart';
 
 class GameConfigScreen extends StatefulWidget {
   const GameConfigScreen({Key? key}) : super(key: key);
@@ -14,27 +14,52 @@ class GameConfigScreen extends StatefulWidget {
 class _GameConfigScreenState extends State<GameConfigScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   final List<TextEditingController> _gameNameControllers = [];
+  final List<bool> _enableTimer = [];
+  final List<int> _timerDurations = [];
   int _gameCount = 5; // Por defecto comenzamos con 5 juegos
   final _formKey = GlobalKey<FormState>();
   
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..forward();
-    
-    // Inicializar controladores
-    _initControllers();
-  }
+@override
+void initState() {
+  super.initState();
+  _animationController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  )..forward();
   
-  void _initControllers() {
-    _gameNameControllers.clear();
-    for (int i = 0; i < _gameCount; i++) {
+  // Inicializar controladores
+  _initControllers();
+  
+  // Inicializar timers (por defecto desactivados)
+  _enableTimer.clear();
+  _timerDurations.clear();
+  for (int i = 0; i < _gameCount; i++) {
+    _enableTimer.add(false);
+    _timerDurations.add(300); // 5 minutos por defecto
+  }
+}
+  
+void _initControllers() {
+  _gameNameControllers.clear();
+  
+  // Si ya hay juegos configurados, cargar sus valores
+  final gameProvider = Provider.of<GameProvider>(context, listen: false);
+  final existingGames = gameProvider.games;
+  
+  for (int i = 0; i < _gameCount; i++) {
+    if (i < existingGames.length) {
+      // Usar nombre y configuración de temporizador existentes
+      _gameNameControllers.add(TextEditingController(text: existingGames[i].name));
+      _enableTimer.add(existingGames[i].hasTimer);
+      _timerDurations.add(existingGames[i].timerDuration);
+    } else {
+      // Usar valores por defecto para nuevos juegos
       _gameNameControllers.add(TextEditingController(text: 'Juego ${i + 1}'));
+      _enableTimer.add(false);
+      _timerDurations.add(300);
     }
   }
+}
   
   @override
   void dispose() {
@@ -46,39 +71,62 @@ class _GameConfigScreenState extends State<GameConfigScreen> with SingleTickerPr
   }
 
   void _increaseGameCount() {
-    if (_gameCount < 15) { // Limitamos a un máximo de 15 juegos
-      setState(() {
-        _gameCount++;
-        _gameNameControllers.add(TextEditingController(text: 'Juego $_gameCount'));
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Máximo 15 juegos permitidos'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
+  if (_gameCount < 15) { // Limitamos a un máximo de 15 juegos
+    setState(() {
+      _gameCount++;
+      _gameNameControllers.add(TextEditingController(text: 'Juego $_gameCount'));
+      _enableTimer.add(false); // Por defecto, sin temporizador
+      _timerDurations.add(300); // 5 minutos por defecto
+    });
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Máximo 15 juegos permitidos'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
-  
-  void _decreaseGameCount() {
-    if (_gameCount > 1) { // Mínimo debe haber 1 juego
-      setState(() {
-        _gameNameControllers.last.dispose();
-        _gameNameControllers.removeLast();
-        _gameCount--;
-      });
-    }
+}
+
+void _decreaseGameCount() {
+  if (_gameCount > 1) { // Mínimo debe haber 1 juego
+    setState(() {
+      _gameNameControllers.last.dispose();
+      _gameNameControllers.removeLast();
+      _enableTimer.removeLast();
+      _timerDurations.removeLast();
+      _gameCount--;
+    });
   }
+}
   
   void _saveConfiguration() {
     if (_formKey.currentState!.validate()) {
       final gameNames = _gameNameControllers.map((controller) => controller.text.trim()).toList();
       
+    // Crear una lista de juegos con su configuración completa
+      final games = <Game>[];
+      for (int i = 0; i < gameNames.length; i++) {
+        games.add(Game(
+          id: i + 1,
+          name: gameNames[i],
+          type: GameType.normal, // Por defecto todos son juegos normales
+          isCompleted: false,
+          isCurrent: i == 0, // El primer juego es el actual
+          hasTimer: _enableTimer[i],
+          timerDuration: _timerDurations[i],
+        ));
+      }
+
       // Guardar la configuración en el provider
       final gameProvider = Provider.of<GameProvider>(context, listen: false);
       gameProvider.configureGames(gameNames);
       
+    // Actualizar la configuración de temporizador para cada juego
+      for (int i = 0; i < games.length; i++) {
+        gameProvider.updateGameTimer(i, _enableTimer[i], _timerDurations[i]);
+      }
+
       // Navegar a la pantalla de puntuación
       Navigator.pushReplacementNamed(context, '/score');
     }
@@ -86,6 +134,8 @@ class _GameConfigScreenState extends State<GameConfigScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configurar Juegos'),
@@ -147,50 +197,116 @@ class _GameConfigScreenState extends State<GameConfigScreen> with SingleTickerPr
                             curve: Curves.easeOutCubic,
                           ),
                         )),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: TextFormField(
-                            controller: _gameNameControllers[index],
-                            decoration: InputDecoration(
-                              labelText: 'Nombre del Juego ${index + 1}',
-                              prefixIcon: Icon(
-                                Icons.sports_esports,
-                                // Adaptar el color al tema
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              filled: true,
-                              // Adaptar el color de relleno según el tema
-                              fillColor: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[100],
-                              // Mejorar color de texto del label para modo oscuro
-                              labelStyle: TextStyle(
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.grey[300]
-                                    : Colors.grey[700],
-                              ),
-                              // Mejorar color de texto para modo oscuro
-                              hintStyle: TextStyle(
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
-                              ),
+                        child: Card(
+                          margin: const EdgeInsets.only(bottom: 16.0),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Nombre del juego
+                                TextFormField(
+                                  controller: _gameNameControllers[index],
+                                  decoration: InputDecoration(
+                                    labelText: 'Nombre del Juego ${index + 1}',
+                                    prefixIcon: Icon(
+                                      Icons.sports_esports,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    filled: true,
+                                    fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Por favor ingresa un nombre para este juego';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                
+                                // Sección de temporizador
+                                SwitchListTile(
+                                  title: const Text('Habilitar Temporizador'),
+                                  subtitle: Text(
+                                    _enableTimer[index] 
+                                        ? 'Este juego tendrá temporizador' 
+                                        : 'Jugar sin límite de tiempo',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                    ),
+                                  ),
+                                  value: _enableTimer[index],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _enableTimer[index] = value;
+                                    });
+                                  },
+                                  secondary: Icon(
+                                    Icons.timer,
+                                    color: _enableTimer[index] 
+                                        ? Theme.of(context).colorScheme.primary 
+                                        : isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  ),
+                                ),
+                                
+                                // Si el temporizador está habilitado, mostrar opciones de duración
+                                if (_enableTimer[index]) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.access_time,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Text('Duración:'),
+                                      const SizedBox(width: 16),
+                                      DropdownButton<int>(
+                                        value: _timerDurations[index],
+                                        items: [
+                                          DropdownMenuItem(
+                                            value: 60,
+                                            child: const Text('1 minuto'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 120,
+                                            child: const Text('2 minutos'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 180,
+                                            child: const Text('3 minutos'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 300,
+                                            child: const Text('5 minutos'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 600,
+                                            child: const Text('10 minutos'),
+                                          ),
+                                        ],
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setState(() {
+                                              _timerDurations[index] = value;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
                             ),
-                            // Ajustar color del texto ingresado para mejor visibilidad
-                            style: TextStyle(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.white
-                                  : Colors.black87,
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Por favor ingresa un nombre para este juego';
-                              }
-                              return null;
-                            },
                           ),
                         ),
                       );
@@ -200,12 +316,16 @@ class _GameConfigScreenState extends State<GameConfigScreen> with SingleTickerPr
               ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: PrimaryButton(
-                  text: 'Guardar y Continuar',
-                  icon: Icons.save,
+                child: ElevatedButton.icon(
                   onPressed: _saveConfiguration,
-                  fullWidth: true,
-                  variant: ButtonVariant.primary,
+                  icon: const Icon(Icons.save),
+                  label: const Text('Guardar y Continuar'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
             ],

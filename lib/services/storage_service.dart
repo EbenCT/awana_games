@@ -56,6 +56,8 @@ class StorageService {
       'isCompleted': game.isCompleted,
       'isCurrent': game.isCurrent,
       'type': game.type.index,
+      'hasTimer': game.hasTimer,
+      'timerDuration': game.timerDuration,
     }).toList();
     await prefs.setString(_gamesKey, jsonEncode(gamesData));
   }
@@ -73,6 +75,8 @@ class StorageService {
         isCompleted: data['isCompleted'],
         isCurrent: data['isCurrent'],
         type: GameType.values[data['type']],
+        hasTimer: data['hasTimer'] ?? false, // Nuevo campo con valor por defecto
+        timerDuration: data['timerDuration'] ?? 300,
       )).toList();
     } catch (e) {
       print('Error loading games: $e');

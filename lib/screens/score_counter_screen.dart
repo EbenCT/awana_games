@@ -10,6 +10,7 @@ import '../widgets/score_counter/game_app_bar.dart';
 import '../widgets/score_counter/game_body.dart';
 import '../widgets/score_counter/game_bottom_bar.dart';
 import '../widgets/score_counter/game_type_selector.dart';
+import '../widgets/score_counter/game_timer.dart';
 
 class ScoreCounterScreen extends StatefulWidget {
   const ScoreCounterScreen({Key? key}) : super(key: key);
@@ -251,6 +252,55 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     });
   }
 
+void _handleTimerEnd() {
+  // Mostrar un diálogo cuando se acaba el tiempo
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.timer_off, color: Colors.red),
+          const SizedBox(width: 8),
+          const Text('¡Tiempo Finalizado!'),
+        ],
+      ),
+      content: const Text(
+        'El tiempo para este juego ha terminado. ¿Deseas finalizar el juego o continuar sin temporizador?'
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text('Continuar Sin Temporizador'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            // Si no hay equipos asignados aún, mostrar una alerta
+            if (!allTeamsAssigned) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Asigna puntuaciones antes de finalizar el juego'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            } else {
+              // Finalizar el juego actual
+              _nextGame(Provider.of<GameProvider>(context, listen: false));
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: const Text('Finalizar Juego'),
+        ),
+      ],
+    ),
+  );
+}
+
   void _calculateRoundResults(TeamsProvider teamsProvider, GameProvider gameProvider) {
     // Ordenar equipos por puntuación actual de ronda
     final gameIndex = gameProvider.currentGameIndex;
@@ -356,58 +406,151 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   }
 
   // Mostrar el diálogo para agregar un juego extra
-  void _showAddExtraGameDialog() {
-    final TextEditingController controller = TextEditingController(text: 'Juego Extra');
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Añadir Juego Extra'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Añadirás un juego extra al final de la lista. El juego actual se mantendrá como último hasta que lo finalices.',
-              style: TextStyle(fontSize: 14),
+// En ScoreCounterScreen, modificar _showAddExtraGameDialog:
+
+void _showAddExtraGameDialog() {
+  final TextEditingController controller = TextEditingController(text: 'Juego Extra');
+  bool hasTimer = false;
+  int timerDuration = 300; // 5 minutos por defecto
+  
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        
+        return AlertDialog(
+          title: const Text('Añadir Juego Extra'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Añadirás un juego extra al final de la lista. El juego actual se mantendrá como último hasta que lo finalices.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre del juego extra',
+                    border: OutlineInputBorder(),
+                  ),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 16),
+                
+                // Opción de temporizador
+                SwitchListTile(
+                  title: const Text('Habilitar Temporizador'),
+                  subtitle: Text(
+                    hasTimer 
+                        ? 'Este juego tendrá temporizador' 
+                        : 'Jugar sin límite de tiempo',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  value: hasTimer,
+                  onChanged: (value) {
+                    setState(() {
+                      hasTimer = value;
+                    });
+                  },
+                  secondary: Icon(
+                    Icons.timer,
+                    color: hasTimer 
+                        ? Theme.of(context).colorScheme.primary 
+                        : isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                
+                // Si el temporizador está habilitado, mostrar opciones de duración
+                if (hasTimer) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('Duración:'),
+                      const SizedBox(width: 16),
+                      DropdownButton<int>(
+                        value: timerDuration,
+                        items: [
+                          DropdownMenuItem(
+                            value: 60,
+                            child: const Text('1 minuto'),
+                          ),
+                          DropdownMenuItem(
+                            value: 120,
+                            child: const Text('2 minutos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 180,
+                            child: const Text('3 minutos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 300,
+                            child: const Text('5 minutos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 600,
+                            child: const Text('10 minutos'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              timerDuration = value;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Nombre del juego extra',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Añadir el juego extra
+                final gameProvider = Provider.of<GameProvider>(context, listen: false);
+                gameProvider.addExtraGame(controller.text.trim());
+                
+                // Actualizar la configuración del temporizador
+                final gameIndex = gameProvider.games.length - 1;
+                gameProvider.updateGameTimer(gameIndex, hasTimer, timerDuration);
+                
+                Navigator.pop(context);
+                
+                // Mostrar mensaje de confirmación
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Juego extra añadido correctamente'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text('Añadir'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Añadir el juego extra
-              final gameProvider = Provider.of<GameProvider>(context, listen: false);
-              gameProvider.addExtraGame(controller.text.trim());
-              Navigator.pop(context);
-              
-              // Mostrar mensaje de confirmación
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Juego extra añadido correctamente'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Añadir'),
-          ),
-        ],
-      ),
-    );
-  }
-
+        );
+      },
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context);
@@ -435,6 +578,18 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                     isDisabled: lockGameTypeSelector, // Usamos la variable para controlar si se puede cambiar
                   ),
                   const SizedBox(height: 16),
+
+                // Temporizador (si está habilitado)
+                if (currentGame != null && currentGame.hasTimer)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: GameTimer(
+                      initialDuration: currentGame.timerDuration,
+                      onTimeUp: _handleTimerEnd,
+                      isActive: true,
+                    ),
+                  ),
+
                   if (activeGameType == GameType.normal)
                     Stack(
                       alignment: Alignment.center,

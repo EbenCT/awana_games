@@ -73,27 +73,28 @@ class GameProvider extends ChangeNotifier {
   }
 
   // Método para configurar inicialmente los juegos
-  void configureGames(List<String> gameNames) {
-    _games.clear();
-    
-    for (int i = 0; i < gameNames.length; i++) {
-      if (gameNames[i].isNotEmpty) {
-        _games.add(Game(
-          id: i + 1,
-          name: gameNames[i],
-          type: GameType.normal, // Por defecto todos son juegos normales
-          isCompleted: false,
-          isCurrent: i == 0, // El primer juego es el actual
-        ));
-      }
+void configureGames(List<String> gameNames) {
+  _games.clear();
+  
+  for (int i = 0; i < gameNames.length; i++) {
+    if (gameNames[i].isNotEmpty) {
+      _games.add(Game(
+        id: i + 1,
+        name: gameNames[i],
+        type: GameType.normal, // Por defecto todos son juegos normales
+        isCompleted: false,
+        isCurrent: i == 0, // El primer juego es el actual
+        hasTimer: false, // Por defecto sin temporizador
+        timerDuration: 300, // 5 minutos por defecto
+      ));
     }
-    
-    _isConfigured = true;
-    _saveGames();
-    _saveConfigState();
-    notifyListeners();
   }
-
+  
+  _isConfigured = true;
+  _saveGames();
+  _saveConfigState();
+  notifyListeners();
+}
   // Añadir un nuevo juego
   void addGame() {
     final nextGameIndex = _games.length + 1;
@@ -110,20 +111,22 @@ class GameProvider extends ChangeNotifier {
   }
 
   // Añadir un juego extra (al final)
-  void addExtraGame(String name) {
-    final nextGameIndex = _games.length + 1;
-    final newGame = Game(
-      id: nextGameIndex,
-      name: name.isNotEmpty ? name : 'Juego Extra $nextGameIndex',
-      type: GameType.normal,
-      isCompleted: false,
-      isCurrent: false, // No es el actual todavía
-    );
-    
-    _games.add(newGame);
-    _saveGames();
-    notifyListeners();
-  }
+void addExtraGame(String name) {
+  final nextGameIndex = _games.length + 1;
+  final newGame = Game(
+    id: nextGameIndex,
+    name: name.isNotEmpty ? name : 'Juego Extra $nextGameIndex',
+    type: GameType.normal,
+    isCompleted: false,
+    isCurrent: false, // No es el actual todavía
+    hasTimer: false, // Por defecto sin temporizador
+    timerDuration: 300, // 5 minutos por defecto
+  );
+  
+  _games.add(newGame);
+  _saveGames();
+  notifyListeners();
+}
 
   void resetGames() {
     _games.clear();
@@ -283,6 +286,23 @@ class GameProvider extends ChangeNotifier {
       await StorageService.saveConfigState(_isConfigured);
     } catch (e) {
       debugPrint('Error saving config state: $e');
+    }
+  }
+
+  // Añadir temporizador a un juego:
+  void updateGameTimer(int gameIndex, bool hasTimer, int timerDuration) {
+    if (gameIndex >= 0 && gameIndex < _games.length) {
+      _games[gameIndex] = Game(
+        id: _games[gameIndex].id,
+        name: _games[gameIndex].name,
+        type: _games[gameIndex].type,
+        isCompleted: _games[gameIndex].isCompleted,
+        isCurrent: _games[gameIndex].isCurrent,
+        hasTimer: hasTimer,
+        timerDuration: timerDuration,
+      );
+      _saveGames();
+      notifyListeners();
     }
   }
 }
