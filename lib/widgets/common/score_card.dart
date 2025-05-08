@@ -5,6 +5,7 @@ import '../../models/team.dart';
 class ScoreCard extends StatelessWidget {
   final Team team;
   final bool showRoundPoints;
+  final int roundPoints; // Nuevo parámetro para los puntos por rondas
   final Function(int)? onPointsChanged;
   final bool isSelected;
   final Function(bool)? onSelected;
@@ -14,6 +15,7 @@ class ScoreCard extends StatelessWidget {
     Key? key,
     required this.team,
     this.showRoundPoints = false,
+    this.roundPoints = 0, // Valor por defecto
     this.onPointsChanged,
     this.isSelected = false,
     this.onSelected,
@@ -34,11 +36,11 @@ class ScoreCard extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: isSelected
-              ? BorderSide(
-                  color: Colors.white.withOpacity(0.8),
-                  width: 2,
-                )
-              : BorderSide.none,
+            ? BorderSide(
+                color: Colors.white.withOpacity(0.8),
+                width: 2,
+              )
+            : BorderSide.none,
         ),
         color: team.teamColor,
         child: Padding(
@@ -89,7 +91,6 @@ class ScoreCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
               // Score section
               if (showRoundPoints)
                 Container(
@@ -122,8 +123,8 @@ class ScoreCard extends StatelessWidget {
                           return ScaleTransition(scale: animation, child: child);
                         },
                         child: Text(
-                          '${team.roundPoints}',
-                          key: ValueKey<int>(team.roundPoints),
+                          '$roundPoints', // Usar el parámetro de puntos por rondas
+                          key: ValueKey<int>(roundPoints),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: isSmallScreen ? 18 : 20,
@@ -160,13 +161,13 @@ class ScoreCard extends StatelessWidget {
                         child: Checkbox(
                           value: isSelected,
                           onChanged: onSelected != null
-                              ? (value) => onSelected?.call(value ?? false)
-                              : null,
+                            ? (value) => onSelected?.call(value ?? false)
+                            : null,
                           checkColor: team.teamColor,
                           fillColor: MaterialStateProperty.resolveWith(
                             (states) => states.contains(MaterialState.selected)
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.7),
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.7),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),

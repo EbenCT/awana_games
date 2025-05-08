@@ -27,6 +27,8 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   bool allTeamsAssigned = false;
   bool roundCalculated = false;
   Map<int, int> currentGameScores = {};
+  Map<int, int> currentRoundPoints = {}; // Para mantener los puntos por rondas del juego actual
+  bool lockGameTypeSelector = false;
 
   @override
   void initState() {
@@ -35,6 +37,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
       for (var team in teams) {
         currentGameScores[team.id] = 0;
+        currentRoundPoints[team.id] = 0; // Inicializar puntos por rondas
       }
       
       // Inicializar el tipo de juego según el juego actual
@@ -44,7 +47,57 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           activeGameType = gameProvider.currentGame!.type;
         });
       }
+      
+      // Verificar si ya hay puntajes asignados para este juego
+      _checkIfScoresAlreadyAssigned();
     });
+  }
+  
+  // Método para verificar si ya hay puntajes asignados en el juego actual
+  void _checkIfScoresAlreadyAssigned() {
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final gameIndex = gameProvider.currentGameIndex;
+    final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
+    
+    // Verificar si algún equipo ya tiene puntuación para este juego
+    bool anyTeamHasScore = false;
+    for (var team in teamsProvider.teams) {
+      // Verificar puntuaciones de juego
+      if (team.gameScores.length > gameIndex && team.gameScores[gameIndex] != null) {
+        anyTeamHasScore = true;
+        
+        // Actualizar los puntajes actuales para mostrarlos en la UI
+        currentGameScores[team.id] = team.gameScores[gameIndex] ?? 0;
+        
+        // Si al menos un equipo tiene puntaje, verificamos si todos están asignados
+        if (team.gameScores[gameIndex] != null && team.gameScores[gameIndex]! > 0) {
+          assignedTeams.add(team.id);
+        }
+      }
+      
+      // Verificar puntos por rondas
+      if (team.roundPoints.length > gameIndex && team.roundPoints[gameIndex] != null) {
+        // Actualizar los puntos por rondas actuales
+        currentRoundPoints[team.id] = team.roundPoints[gameIndex] ?? 0;
+        
+        // Si hay puntos por rondas y es un juego tipo rondas, marcar como calculado
+        if (activeGameType == GameType.rounds && team.roundPoints[gameIndex]! > 0) {
+          roundCalculated = true;
+        }
+      }
+    }
+    
+    // Si hay al menos un equipo con puntaje, bloqueamos el selector de tipo de juego
+    if (anyTeamHasScore) {
+      setState(() {
+        lockGameTypeSelector = true;
+        
+        // Si todos los equipos tienen puntaje, el juego está completado
+        if (assignedTeams.length == teamsProvider.teams.length) {
+          allTeamsAssigned = true;
+        }
+      });
+    }
   }
 
   String _getStageText() {
@@ -72,15 +125,26 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   }
 
   void _onGameTypeChanged(GameType type) {
-    setState(() {
-      activeGameType = type;
-      selectedNumbers.clear();
-    });
-    
-    // Actualizar el tipo de juego en el provider
-    final gameProvider = Provider.of<GameProvider>(context, listen: false);
-    if (gameProvider.currentGame != null) {
-      gameProvider.updateGameType(gameProvider.currentGameIndex, type);
+    // Solo permitir cambiar el tipo si no hay puntuaciones asignadas
+    if (!lockGameTypeSelector) {
+      setState(() {
+        activeGameType = type;
+        selectedNumbers.clear();
+      });
+      
+      // Actualizar el tipo de juego en el provider
+      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+      if (gameProvider.currentGame != null) {
+        gameProvider.updateGameType(gameProvider.currentGameIndex, type);
+      }
+    } else {
+      // Mostrar mensaje informando que no se puede cambiar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se puede cambiar el tipo de juego cuando ya hay puntuaciones asignadas.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
     }
   }
 
@@ -120,6 +184,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           
           setState(() {
             allTeamsAssigned = true;
+            lockGameTypeSelector = true; // Bloquear cambio de tipo de juego
           });
           return;
         }
@@ -138,6 +203,13 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       final gameProvider = Provider.of<GameProvider>(context, listen: false);
       teamsProvider.updateScore(teamId, gameProvider.currentGameIndex, points);
       assignedTeams.add(teamId);
+      
+      // Bloquear cambio de tipo de juego en cuanto se asigna la primera puntuación
+      if (!lockGameTypeSelector) {
+        setState(() {
+          lockGameTypeSelector = true;
+        });
+      }
     }
     
     final remainingTeams = teamsProvider.teams
@@ -180,36 +252,59 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   }
 
   void _calculateRoundResults(TeamsProvider teamsProvider, GameProvider gameProvider) {
-    // Ordenar equipos por puntuación actual
-    final List<Team> sortedTeams = List.from(teamsProvider.teams)
-      ..sort((a, b) => b.roundPoints.compareTo(a.roundPoints));
-    
-    int currentRank = 1;
-    int currentScore = sortedTeams[0].roundPoints;
-    Map<int, int> pointsForRank = {1: 100, 2: 75, 3: 50, 4: 25};
-    
-    // Obtener el índice del juego actual
+    // Ordenar equipos por puntuación actual de ronda
     final gameIndex = gameProvider.currentGameIndex;
     
+    final List<Team> sortedTeams = List.from(teamsProvider.teams)
+      ..sort((a, b) {
+        final aPoints = currentRoundPoints[a.id] ?? 0;
+        final bPoints = currentRoundPoints[b.id] ?? 0;
+        return bPoints.compareTo(aPoints);
+      });
+    
+    int currentRank = 1;
+    int currentScore = currentRoundPoints[sortedTeams[0].id] ?? 0;
+    Map<int, int> pointsForRank = {1: 100, 2: 75, 3: 50, 4: 25};
+    
     for (int i = 0; i < sortedTeams.length; i++) {
-      if (sortedTeams[i].roundPoints < currentScore) {
+      final teamRoundPoints = currentRoundPoints[sortedTeams[i].id] ?? 0;
+      
+      if (teamRoundPoints < currentScore) {
         currentRank = i + 1;
-        currentScore = sortedTeams[i].roundPoints;
+        currentScore = teamRoundPoints;
       }
       
       final points = pointsForRank[currentRank] ?? 25;
-      _updateCurrentGameScore(sortedTeams[i].id, points);
-      teamsProvider.updateScore(
-        sortedTeams[i].id,
-        gameIndex,
-        points
-      );
+      final teamId = sortedTeams[i].id;
+      
+      // Actualizar puntuación del juego
+      _updateCurrentGameScore(teamId, points);
+      teamsProvider.updateScore(teamId, gameIndex, points);
+      
+      // Guardar también los puntos por rondas para este juego
+      teamsProvider.updateTeamRoundPoints(teamId, gameIndex, currentRoundPoints[teamId] ?? 0);
+      
+      // Añadir a equipos asignados
+      assignedTeams.add(teamId);
     }
     
     setState(() {
       roundCalculated = true;
       allTeamsAssigned = true;
+      lockGameTypeSelector = true; // Bloquear cambio de tipo de juego
     });
+  }
+
+  // Método para actualizar los puntos de ronda de un equipo
+  void _updateTeamRoundPoints(int teamId, int change) {
+    final currentPoints = currentRoundPoints[teamId] ?? 0;
+    final newPoints = currentPoints + change;
+    
+    if (newPoints >= 0) {
+      setState(() {
+        currentRoundPoints[teamId] = newPoints;
+      });
+    }
   }
 
   // Método para finalizar el juego actual y pasar al siguiente
@@ -231,14 +326,15 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           assignedTeams.clear();
           allTeamsAssigned = false;
           roundCalculated = false;
+          lockGameTypeSelector = false; // Permitir cambiar el tipo en el nuevo juego
           
           // Resetear puntajes del juego actual
           currentGameScores.clear();
+          currentRoundPoints.clear(); // Limpiar puntos por rondas
           final teams = Provider.of<TeamsProvider>(context, listen: false).teams;
           for (var team in teams) {
             currentGameScores[team.id] = 0;
-            Provider.of<TeamsProvider>(context, listen: false)
-                .updateTeamRoundPoints(team.id, 0);
+            currentRoundPoints[team.id] = 0; // Inicializar puntos por rondas
           }
           
           // Limpiar números seleccionados pero mantener el máximo de la grilla
@@ -249,6 +345,9 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
             activeGameType = gameProvider.currentGame!.type;
           }
         });
+        
+        // Verificar si el nuevo juego ya tiene puntuaciones asignadas
+        _checkIfScoresAlreadyAssigned();
       }
     } else {
       // Si no hay más juegos, ir a la tabla de posiciones
@@ -333,6 +432,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                   GameTypeSelector(
                     selectedType: activeGameType,
                     onTypeSelected: _onGameTypeChanged,
+                    isDisabled: lockGameTypeSelector, // Usamos la variable para controlar si se puede cambiar
                   ),
                   const SizedBox(height: 16),
                   if (activeGameType == GameType.normal)
@@ -382,14 +482,9 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                 selectedTeams: selectedTeams,
                 currentGameScores: currentGameScores,
                 roundCalculated: roundCalculated,
+                currentRoundPoints: currentRoundPoints, // Pasar los puntos por rondas actuales
                 onTeamRoundPointsChanged: (teamId, change) {
-                  setState(() {
-                    final team = teamsProvider.teams.firstWhere((t) => t.id == teamId);
-                    final int newPoints = team.roundPoints + change;
-                    if (newPoints >= 0) {
-                      teamsProvider.updateTeamRoundPoints(teamId, newPoints);
-                    }
-                  });
+                  _updateTeamRoundPoints(teamId, change);
                 },
                 onTeamSelected: (teamId, isSelected) {
                   setState(() {
@@ -404,6 +499,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
                 onNumberSelected: _onNumberSelected,
                 maxGridNumbers: gameProvider.maxGridNumbers,
                 onAddNumber: () => gameProvider.incrementMaxNumbers(),
+                gameIndex: gameProvider.currentGameIndex, // Pasar el índice del juego actual
               ),
             ),
           ],
@@ -417,7 +513,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
           onCalculateResult: () => _calculateRoundResults(teamsProvider, gameProvider),
           onNextGame: () => _nextGame(gameProvider),
           isLastGame: isLastGame,
-          onAddExtraGame: isLastGame ? _showAddExtraGameDialog : null, // Solo mostrar si es el último juego
+          onAddExtraGame: isLastGame ? _showAddExtraGameDialog : null,
         ),
       ),
     );

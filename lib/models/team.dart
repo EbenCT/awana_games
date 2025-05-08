@@ -6,30 +6,40 @@ class Team {
   final String name;
   final Color teamColor;
   final int totalScore;
-   int roundPoints;
   final List<int?> gameScores;
+  final List<int?> roundPoints; // Cambiado a una lista para mantener puntos por rondas por juego
 
   Team({
     required this.id,
     required this.name,
     required this.teamColor,
     this.totalScore = 0,
-    this.roundPoints = 0,
     List<int?>? gameScores,
-  }) : gameScores = gameScores ?? [];
+    List<int?>? roundPoints, // Parámetro para roundPoints
+  }) : 
+    gameScores = gameScores ?? [],
+    roundPoints = roundPoints ?? []; // Inicializar roundPoints como lista vacía si no se proporciona
+
+  // Método para obtener los puntos de ronda de un juego específico
+  int getRoundPoints(int gameIndex) {
+    if (roundPoints.length > gameIndex && roundPoints[gameIndex] != null) {
+      return roundPoints[gameIndex]!;
+    }
+    return 0;
+  }
 
   Team copyWith({
     int? totalScore,
-    int? roundPoints,
     List<int?>? gameScores,
+    List<int?>? roundPoints,
   }) {
     return Team(
       id: id,
       name: name,
       teamColor: teamColor,
       totalScore: totalScore ?? this.totalScore,
-      roundPoints: roundPoints ?? this.roundPoints,
       gameScores: gameScores ?? this.gameScores,
+      roundPoints: roundPoints ?? this.roundPoints,
     );
   }
 

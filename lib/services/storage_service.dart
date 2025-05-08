@@ -9,7 +9,7 @@ class StorageService {
   static const String _teamsKey = 'teams';
   static const String _gamesKey = 'games';
   static const String _maxGridNumbersKey = 'maxGridNumbers';
-  static const String _configStateKey = 'configState'; // Nueva clave para el estado de configuración
+  static const String _configStateKey = 'configState';
 
   // Guardar equipos
   static Future<void> saveTeams(List<Team> teams) async {
@@ -19,8 +19,8 @@ class StorageService {
       'name': team.name,
       'teamColor': team.teamColor.value,
       'totalScore': team.totalScore,
-      'roundPoints': team.roundPoints,
       'gameScores': team.gameScores,
+      'roundPoints': team.roundPoints, // Guardamos la lista de puntos por rondas
     }).toList();
     await prefs.setString(_teamsKey, jsonEncode(teamsData));
   }
@@ -37,8 +37,8 @@ class StorageService {
         name: data['name'],
         teamColor: Color(data['teamColor']),
         totalScore: data['totalScore'],
-        roundPoints: data['roundPoints'],
-        gameScores: List<int?>.from(data['gameScores']),
+        gameScores: List<int?>.from(data['gameScores'] ?? []),
+        roundPoints: List<int?>.from(data['roundPoints'] ?? []), // Cargamos la lista de puntos por rondas
       )).toList();
     } catch (e) {
       print('Error loading teams: $e');
@@ -91,13 +91,13 @@ class StorageService {
     return prefs.getInt(_maxGridNumbersKey);
   }
 
-  // Nuevo: Guardar estado de configuración
+  // Guardar estado de configuración
   static Future<void> saveConfigState(bool isConfigured) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_configStateKey, isConfigured);
   }
 
-  // Nuevo: Cargar estado de configuración
+  // Cargar estado de configuración
   static Future<bool?> loadConfigState() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_configStateKey);
@@ -109,6 +109,6 @@ class StorageService {
     await prefs.remove(_teamsKey);
     await prefs.remove(_gamesKey);
     await prefs.remove(_maxGridNumbersKey);
-    await prefs.remove(_configStateKey); // Incluir la nueva clave
+    await prefs.remove(_configStateKey);
   }
 }

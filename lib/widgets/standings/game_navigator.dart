@@ -65,13 +65,15 @@ class GameNavigator extends StatelessWidget {
       final gameScore = team.gameScores.length > currentGameIndex
           ? team.gameScores[currentGameIndex]
           : null;
+
+      final roundPoints = team.getRoundPoints(currentGameIndex);
       
       return {
         'teamId': team.id,
         'teamName': team.name,
         'teamColor': team.teamColor,
         'score': gameScore,
-        'points': game.type == GameType.rounds ? team.roundPoints : null,
+        'points': game.type == GameType.rounds ? roundPoints : null,
       };
     }).toList();
     

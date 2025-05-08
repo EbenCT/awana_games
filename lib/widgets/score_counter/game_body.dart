@@ -11,6 +11,7 @@ class GameBody extends StatelessWidget {
   final List<int> assignedTeams;
   final List<int> selectedTeams;
   final Map<int, int> currentGameScores;
+  final Map<int, int> currentRoundPoints; // Nuevo mapa para puntos por rondas
   final bool roundCalculated;
   final Function(int, int) onTeamRoundPointsChanged;
   final Function(int, bool) onTeamSelected;
@@ -19,6 +20,7 @@ class GameBody extends StatelessWidget {
   final int maxGridNumbers;
   final VoidCallback onAddNumber;
   final bool isLandscape;
+  final int gameIndex; // Nuevo parámetro para el índice del juego actual
 
   const GameBody({
     Key? key,
@@ -27,6 +29,7 @@ class GameBody extends StatelessWidget {
     required this.assignedTeams,
     required this.selectedTeams,
     required this.currentGameScores,
+    required this.currentRoundPoints, // Requerido nuevo parámetro
     required this.roundCalculated,
     required this.onTeamRoundPointsChanged,
     required this.onTeamSelected,
@@ -34,6 +37,7 @@ class GameBody extends StatelessWidget {
     required this.onNumberSelected,
     required this.maxGridNumbers,
     required this.onAddNumber,
+    required this.gameIndex, // Requerido nuevo parámetro
     this.isLandscape = false,
   }) : super(key: key);
 
@@ -42,10 +46,10 @@ class GameBody extends StatelessWidget {
     if (isLandscape) {
       return _buildLandscapeLayout();
     }
-    
+
     return _buildPortraitLayout();
   }
-  
+
   Widget _buildPortraitLayout() {
     // Usamos Column con ListView interno para evitar problemas de layout
     return Column(
@@ -59,6 +63,9 @@ class GameBody extends StatelessWidget {
                 final index = entry.key;
                 final team = entry.value;
                 final isDisabled = assignedTeams.contains(team.id);
+                
+                // Obtener los puntos de ronda actuales para este equipo
+                final roundPoints = currentRoundPoints[team.id] ?? 0;
                 
                 return TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.0, end: 1.0),
@@ -74,15 +81,16 @@ class GameBody extends StatelessWidget {
                           child: ScoreCard(
                             team: team,
                             showRoundPoints: activeGameType == GameType.rounds && !roundCalculated,
+                            roundPoints: roundPoints, // Pasar los puntos por rondas actuales
                             onPointsChanged: activeGameType == GameType.rounds && !roundCalculated
-                                ? (change) => onTeamRoundPointsChanged(team.id, change)
-                                : null,
+                              ? (change) => onTeamRoundPointsChanged(team.id, change)
+                              : null,
                             isSelected: activeGameType == GameType.normal
-                                ? selectedTeams.contains(team.id)
-                                : false,
+                              ? selectedTeams.contains(team.id)
+                              : false,
                             onSelected: (activeGameType == GameType.normal && !isDisabled)
-                                ? (isSelected) => onTeamSelected(team.id, isSelected)
-                                : null,
+                              ? (isSelected) => onTeamSelected(team.id, isSelected)
+                              : null,
                             currentGameScore: currentGameScores[team.id] ?? 0,
                           ),
                         ),
@@ -91,7 +99,7 @@ class GameBody extends StatelessWidget {
                   },
                 );
               }).toList(),
-              
+
               if (activeGameType == GameType.rounds && !roundCalculated) ...[
                 const SizedBox(height: 16),
                 AnimatedOpacity(
@@ -113,7 +121,7 @@ class GameBody extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildLandscapeLayout() {
     if (activeGameType == GameType.rounds && !roundCalculated) {
       // For rounds game type, split the screen into teams and number grid
@@ -126,11 +134,15 @@ class GameBody extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: teams.map((team) {
+                // Obtener los puntos de ronda actuales para este equipo
+                final roundPoints = currentRoundPoints[team.id] ?? 0;
+                
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: ScoreCard(
                     team: team,
                     showRoundPoints: true,
+                    roundPoints: roundPoints, // Pasar los puntos por rondas actuales
                     onPointsChanged: (change) => onTeamRoundPointsChanged(team.id, change),
                     currentGameScore: currentGameScores[team.id] ?? 0,
                   ),
@@ -138,7 +150,6 @@ class GameBody extends StatelessWidget {
               }).toList(),
             ),
           ),
-          
           // Number grid column
           Expanded(
             flex: 1,
@@ -171,15 +182,16 @@ class GameBody extends StatelessWidget {
           final team = teams[index];
           final isDisabled = assignedTeams.contains(team.id);
           
+          // En el modo normal no usamos puntos por rondas
           return ScoreCard(
             team: team,
             showRoundPoints: false,
             isSelected: activeGameType == GameType.normal
-                ? selectedTeams.contains(team.id)
-                : false,
+              ? selectedTeams.contains(team.id)
+              : false,
             onSelected: (activeGameType == GameType.normal && !isDisabled)
-                ? (isSelected) => onTeamSelected(team.id, isSelected)
-                : null,
+              ? (isSelected) => onTeamSelected(team.id, isSelected)
+              : null,
             currentGameScore: currentGameScores[team.id] ?? 0,
           );
         },

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/team.dart';
 import '../providers/game_provider.dart';
+import '../providers/teams_provider.dart'; // Añadido para acceder al provider de equipos
 import '../widgets/common/score_card.dart';
 import '../widgets/score_counter/number_grid.dart';
 
@@ -14,21 +15,14 @@ class GameRoundsScreen extends StatefulWidget {
 }
 
 class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerProviderStateMixin {
-  late List<Team> teams;
   List<int> selectedNumbers = [];
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  int currentGameIndex = 0; // Para saber en qué juego estamos
   
   @override
   void initState() {
     super.initState();
-    
-    teams = [
-      Team(id: 1, name: 'Rojo', teamColor: Colors.red),
-      Team(id: 2, name: 'Amarillo', teamColor: Colors.amber),
-      Team(id: 3, name: 'Verde', teamColor: Colors.green),
-      Team(id: 4, name: 'Azul', teamColor: Colors.blue),
-    ];
     
     _animationController = AnimationController(
       vsync: this,
@@ -39,6 +33,20 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
       parent: _animationController,
       curve: Curves.easeIn,
     );
+    
+    // Obtenemos el índice del juego actual
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+      final games = gameProvider.games;
+      for (int i = 0; i < games.length; i++) {
+        if (games[i].isCurrent) {
+          setState(() {
+            currentGameIndex = i;
+          });
+          break;
+        }
+      }
+    });
   }
   
   @override
@@ -62,6 +70,8 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final gameProvider = Provider.of<GameProvider>(context);
+    final teamsProvider = Provider.of<TeamsProvider>(context);
+    final teams = teamsProvider.teams;
     final size = MediaQuery.of(context).size;
     final isLandscape = size.width > size.height;
     
@@ -71,12 +81,12 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
         elevation: 0,
       ),
       body: isLandscape
-          ? _buildLandscapeLayout(gameProvider)
-          : _buildPortraitLayout(gameProvider),
+          ? _buildLandscapeLayout(gameProvider, teams, teamsProvider)
+          : _buildPortraitLayout(gameProvider, teams, teamsProvider),
     );
   }
   
-  Widget _buildPortraitLayout(GameProvider gameProvider) {
+  Widget _buildPortraitLayout(GameProvider gameProvider, List<Team> teams, TeamsProvider teamsProvider) {
     return SafeArea(
       child: Column(
         children: [
@@ -94,15 +104,10 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
                           team: team,
                           showRoundPoints: true,
                           onPointsChanged: (change) {
-                            setState(() {
-                              final updatedPoints = team.roundPoints + change;
-                              if (updatedPoints >= 0) {
-                                teams[teams.indexOf(team)] = team.copyWith(
-                                  roundPoints: updatedPoints,
-                                );
-                              }
-                            });
+                            _updateTeamRoundPoints(team, change, teamsProvider);
                           },
+                          // Obtener los puntos de ronda del provider
+                          roundPoints: teamsProvider.getTeamRoundPoints(team.id, currentGameIndex),
                         ),
                       )).toList(),
                     ),
@@ -130,7 +135,7 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
     );
   }
   
-  Widget _buildLandscapeLayout(GameProvider gameProvider) {
+  Widget _buildLandscapeLayout(GameProvider gameProvider, List<Team> teams, TeamsProvider teamsProvider) {
     return SafeArea(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -147,15 +152,10 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
                     team: team,
                     showRoundPoints: true,
                     onPointsChanged: (change) {
-                      setState(() {
-                        final updatedPoints = team.roundPoints + change;
-                        if (updatedPoints >= 0) {
-                          teams[teams.indexOf(team)] = team.copyWith(
-                            roundPoints: updatedPoints,
-                          );
-                        }
-                      });
+                      _updateTeamRoundPoints(team, change, teamsProvider);
                     },
+                    // Obtener los puntos de ronda del provider
+                    roundPoints: teamsProvider.getTeamRoundPoints(team.id, currentGameIndex),
                   ),
                 )).toList(),
               ),
@@ -189,6 +189,20 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
     );
   }
   
+  void _updateTeamRoundPoints(Team team, int change, TeamsProvider teamsProvider) {
+    // Obtener los puntos actuales
+    int currentPoints = teamsProvider.getTeamRoundPoints(team.id, currentGameIndex);
+    
+    // Calcular los nuevos puntos
+    int newPoints = currentPoints + change;
+    
+    // Asegurar que los puntos no sean negativos
+    if (newPoints >= 0) {
+      // Actualizar los puntos de ronda para el equipo y juego específico
+      teamsProvider.updateTeamRoundPoints(team.id, currentGameIndex, newPoints);
+    }
+  }
+  
   Widget _buildBottomBar() {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -217,8 +231,7 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                // Implementar lógica para finalizar ronda
-                Navigator.pop(context);
+                _finalizarRonda();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.purple,
@@ -241,5 +254,35 @@ class _GameRoundsScreenState extends State<GameRoundsScreen> with SingleTickerPr
         ],
       ),
     );
+  }
+  
+  void _finalizarRonda() {
+    // Obtenemos los providers
+    final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    
+    // Ordenamos los equipos por sus puntos de ronda
+    List<Team> sortedTeams = List.from(teamsProvider.teams);
+    sortedTeams.sort((a, b) => 
+      teamsProvider.getTeamRoundPoints(b.id, currentGameIndex)
+        .compareTo(teamsProvider.getTeamRoundPoints(a.id, currentGameIndex))
+    );
+    
+    // Asignar puntuaciones según la posición (ejemplo: 100, 75, 50, 25 puntos)
+    Map<int, int> scoreForPosition = {0: 100, 1: 75, 2: 50, 3: 25};
+    
+    for (int i = 0; i < sortedTeams.length; i++) {
+      Team team = sortedTeams[i];
+      int score = scoreForPosition[i] ?? 0;
+      
+      // Actualizar la puntuación del juego para este equipo
+      teamsProvider.updateScore(team.id, currentGameIndex, score);
+    }
+    
+    // Marcar el juego como completado si es necesario
+    gameProvider.markGameAsCompleted(currentGameIndex);
+    
+    // Volver a la pantalla anterior
+    Navigator.pop(context);
   }
 }

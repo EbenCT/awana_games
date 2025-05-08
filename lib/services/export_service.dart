@@ -373,7 +373,7 @@ class ExportService {
                                       
                                       // Para juegos de tipo "rounds", mostrar los puntos de ronda
                                       if (isRoundGame && index < team.gameScores.length) {
-                                        final roundPoints = team.roundPoints;
+                                        final roundPoints = team.getRoundPoints(index);
                                         if (roundPoints > 0) {
                                           scoreText = '$gameScore\n($roundPoints pts)';
                                         }
@@ -633,7 +633,7 @@ class ExportService {
                                             fontWeight: pw.FontWeight.bold,
                                           ),
                                           _buildTableCell(
-                                            '${team.roundPoints}',
+                                            '${team.getRoundPoints(gameIndex)}',
                                             textAlign: pw.TextAlign.center,
                                           ),
                                           _buildTableCell(
