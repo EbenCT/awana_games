@@ -6,6 +6,8 @@ import '../providers/game_provider.dart';
 import '../widgets/standings/game_navigator.dart';
 import '../widgets/standings/standings_table.dart';
 import '../widgets/standings/export_button.dart';
+import 'edit_score_screen.dart';
+import 'score_history_screen.dart';
 
 class StandingsScreen extends StatefulWidget {
   const StandingsScreen({Key? key}) : super(key: key);
@@ -45,6 +47,28 @@ class _StandingsScreenState extends State<StandingsScreen> with SingleTickerProv
       appBar: AppBar(
         title: const Text('Tabla de Posiciones'),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Historial de Cambios',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ScoreHistoryScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Editar Puntuaciones',
+            onPressed: () {
+              // Mostrar diálogo para seleccionar el juego a editar
+              _showEditGameSelectionDialog(context);
+            },
+          ),
+        ],
       ),
       body: FadeTransition(
         opacity: CurvedAnimation(
@@ -83,6 +107,58 @@ class _StandingsScreenState extends State<StandingsScreen> with SingleTickerProv
           curve: Curves.elasticOut,
         ),
         child: ExportButton(tableKey: _tableKey),
+      ),
+    );
+  }
+  
+  void _showEditGameSelectionDialog(BuildContext context) {
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final games = gameProvider.games;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Seleccionar Juego'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: games.length,
+            itemBuilder: (context, index) {
+              final game = games[index];
+              return ListTile(
+                leading: Icon(
+                  game.isCompleted ? Icons.check_circle : Icons.sports_esports,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                title: Text(game.name),
+                subtitle: Text(
+                  game.isCompleted ? 'Completado' : 'En progreso',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditScoreScreen(gameIndex: index),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+        ],
       ),
     );
   }

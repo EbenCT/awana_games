@@ -10,6 +10,7 @@ class StorageService {
   static const String _gamesKey = 'games';
   static const String _maxGridNumbersKey = 'maxGridNumbers';
   static const String _configStateKey = 'configState';
+  static const String _scoreHistoryKey = 'scoreHistory';
 
   // Guardar equipos
   static Future<void> saveTeams(List<Team> teams) async {
@@ -75,6 +76,26 @@ class StorageService {
       )).toList();
     } catch (e) {
       print('Error loading games: $e');
+      return null;
+    }
+  }
+
+  // Guardar historial de cambios
+  static Future<void> saveScoreHistory(List<Map<String, dynamic>> history) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_scoreHistoryKey, jsonEncode(history));
+  }
+
+  // Cargar historial de cambios
+  static Future<List<Map<String, dynamic>>?> loadScoreHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final historyString = prefs.getString(_scoreHistoryKey);
+    if (historyString == null) return null;
+    try {
+      final List<dynamic> historyData = jsonDecode(historyString);
+      return historyData.map((item) => Map<String, dynamic>.from(item)).toList();
+    } catch (e) {
+      print('Error loading score history: $e');
       return null;
     }
   }

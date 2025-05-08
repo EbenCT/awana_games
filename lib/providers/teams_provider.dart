@@ -24,6 +24,44 @@ class TeamsProvider extends ChangeNotifier {
     return sorted;
   }
 
+final List<Map<String, dynamic>> _scoreChangeHistory = [];
+List<Map<String, dynamic>> get scoreChangeHistory => _scoreChangeHistory;
+
+// Método para editar una puntuación
+void editScore(int teamId, int gameIndex, int newScore) {
+  final teamIndex = _teams.indexWhere((t) => t.id == teamId);
+  if (teamIndex == -1) return;
+  
+  final team = _teams[teamIndex];
+  final oldScore = team.gameScores.length > gameIndex ? team.gameScores[gameIndex] : null;
+  
+  // Registrar el cambio en el historial
+  _scoreChangeHistory.add({
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+    'teamId': teamId,
+    'teamName': team.name,
+    'gameIndex': gameIndex,
+    'oldScore': oldScore,
+    'newScore': newScore,
+  });
+  
+  // Actualizar el equipo con la nueva puntuación
+  _teams[teamIndex] = team.updateGameScore(gameIndex, newScore);
+  
+  _saveTeams();
+  _saveScoreHistory(); // Nuevo método para guardar el historial
+  notifyListeners();
+}
+
+// Método para guardar el historial de cambios
+Future<void> _saveScoreHistory() async {
+  try {
+    await StorageService.saveScoreHistory(_scoreChangeHistory);
+  } catch (e) {
+    debugPrint('Error saving score history: $e');
+  }
+}
+
   // Inicializar el proveedor y cargar datos guardados
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -34,6 +72,14 @@ class TeamsProvider extends ChangeNotifier {
         _teams.clear();
         _teams.addAll(savedTeams);
       }
+
+    // Cargar el historial de cambios
+    final savedHistory = await StorageService.loadScoreHistory();
+    if (savedHistory != null) {
+      _scoreChangeHistory.clear();
+      _scoreChangeHistory.addAll(savedHistory);
+    }
+
       _isInitialized = true;
     } catch (e) {
       debugPrint('Error initializing TeamsProvider: $e');

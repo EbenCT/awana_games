@@ -43,6 +43,27 @@ class Team {
     );
   }
 
+  Team updateGameScore(int gameIndex, int newScore) {
+    final updatedScores = List<int?>.from(gameScores);
+    if (updatedScores.length <= gameIndex) {
+      while (updatedScores.length <= gameIndex) {
+        updatedScores.add(null);
+      }
+    }
+    updatedScores[gameIndex] = newScore;
+    
+    // Recalcular la puntuación total
+    final newTotalScore = updatedScores.fold(0, (sum, s) => sum + (s ?? 0));
+    
+    return Team(
+      id: id,
+      name: name,
+      teamColor: teamColor,
+      totalScore: newTotalScore,
+      gameScores: updatedScores,
+      roundPoints: roundPoints,
+    );
+  }
   @override
   String toString() {
     return 'Team{id: $id, name: $name, totalScore: $totalScore, roundPoints: $roundPoints, gameScores: $gameScores}';
