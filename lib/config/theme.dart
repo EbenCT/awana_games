@@ -1,4 +1,4 @@
-// lib/config/theme.dart
+// lib/config/theme.dart (modificado)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -12,17 +12,25 @@ class AppTheme {
   static const Color textLightColor = Color(0xFF757575);
   static const Color accentColor = Color(0xFFFF4081);
   
-  // Colores para los equipos (mantenemos los actuales pero podemos refinarlos)
+  // Colores para el tema oscuro
+  static const Color darkPrimaryColor = Color(0xFF9C27B0);
+  static const Color darkSecondaryColor = Color(0xFFE040FB);
+  static const Color darkBackgroundColor = Color(0xFF121212);
+  static const Color darkCardColor = Color(0xFF1E1E1E);
+  static const Color darkTextColor = Color(0xFFEEEEEE);
+  static const Color darkTextSecondaryColor = Color(0xFFBDBDBD);
+  
+  // Colores para los equipos
   static const Map<String, Color> teamColors = {
-    'Rojo': Color(0xFFE53935),      // Rojo más vibrante
-    'Amarillo': Color(0xFFFFB300),  // Amarillo dorado
-    'Verde': Color(0xFF43A047),     // Verde más vibrante
-    'Azul': Color(0xFF1E88E5),      // Azul más vibrante
+    'Rojo': Color(0xFFE53935),
+    'Amarillo': Color(0xFFFFB300),
+    'Verde': Color(0xFF43A047),
+    'Azul': Color(0xFF1E88E5),
   };
 
   static ThemeData get lightTheme {
     return ThemeData(
-      useMaterial3: true,  // Usar Material 3 para un diseño más moderno
+      useMaterial3: true,
       colorScheme: ColorScheme.light(
         primary: primaryColor,
         secondary: secondaryColor,
@@ -94,21 +102,105 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+      ),
     );
   }
   
-  // Añadamos una versión oscura del tema para futura implementación
+  // Tema oscuro mejorado
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
+      brightness: Brightness.dark,
       colorScheme: ColorScheme.dark(
-        primary: secondaryColor,
-        secondary: primaryColor,
-        background: const Color(0xFF121212),
-        surface: const Color(0xFF1E1E1E),
-        onSurface: Colors.white,
+        primary: darkPrimaryColor,
+        secondary: darkSecondaryColor,
+        background: darkBackgroundColor,
+        surface: darkCardColor,
+        onSurface: darkTextColor,
       ),
-      // Resto de configuraciones para tema oscuro
+      scaffoldBackgroundColor: darkBackgroundColor,
+      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        backgroundColor: darkCardColor,
+        foregroundColor: darkTextColor,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Poppins',
+          color: darkTextColor,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: darkCardColor,
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          foregroundColor: darkTextColor,
+          backgroundColor: darkPrimaryColor,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: darkPrimaryColor,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          side: const BorderSide(color: darkPrimaryColor),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: darkPrimaryColor,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.grey[800],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkPrimaryColor, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      iconTheme: IconThemeData(color: darkTextColor),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: darkCardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+      ),
+      dialogTheme: DialogTheme(
+        backgroundColor: darkCardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
     );
   }
 }

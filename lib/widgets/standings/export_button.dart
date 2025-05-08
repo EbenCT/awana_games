@@ -20,7 +20,7 @@ class ExportButton extends StatelessWidget {
       onPressed: () => _showExportOptions(context),
       icon: const Icon(Icons.share),
       label: const Text('Exportar'),
-      backgroundColor: Colors.purple,
+      backgroundColor: Theme.of(context).colorScheme.primary,
     );
   }
 

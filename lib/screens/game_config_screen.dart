@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
-import '../config/theme.dart';
 import '../widgets/common/primary_button.dart';
 
 class GameConfigScreen extends StatefulWidget {
@@ -114,13 +113,13 @@ class _GameConfigScreenState extends State<GameConfigScreen> with SingleTickerPr
                         IconButton(
                           onPressed: _decreaseGameCount,
                           icon: const Icon(Icons.remove_circle),
-                          color: AppTheme.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           tooltip: 'Disminuir cantidad de juegos',
                         ),
                         IconButton(
                           onPressed: _increaseGameCount,
                           icon: const Icon(Icons.add_circle),
-                          color: AppTheme.primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           tooltip: 'Aumentar cantidad de juegos',
                         ),
                       ],
@@ -154,12 +153,37 @@ class _GameConfigScreenState extends State<GameConfigScreen> with SingleTickerPr
                             controller: _gameNameControllers[index],
                             decoration: InputDecoration(
                               labelText: 'Nombre del Juego ${index + 1}',
-                              prefixIcon: const Icon(Icons.sports_esports),
+                              prefixIcon: Icon(
+                                Icons.sports_esports,
+                                // Adaptar el color al tema
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Colors.grey[100],
+                              // Adaptar el color de relleno según el tema
+                              fillColor: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              // Mejorar color de texto del label para modo oscuro
+                              labelStyle: TextStyle(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
+                              ),
+                              // Mejorar color de texto para modo oscuro
+                              hintStyle: TextStyle(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                            // Ajustar color del texto ingresado para mejor visibilidad
+                            style: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black87,
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {

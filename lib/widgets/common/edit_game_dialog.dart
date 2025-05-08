@@ -22,8 +22,20 @@ class EditGameDialog extends StatelessWidget {
       title: const Text('Editar nombre del juego'),
       content: TextField(
         controller: controller,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           labelText: 'Nombre del juego',
+          filled: true,
+          fillColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[800]
+              : Colors.grey[100],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
         ),
         maxLength: 30,
         autofocus: true,

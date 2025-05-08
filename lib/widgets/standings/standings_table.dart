@@ -1,4 +1,4 @@
-// lib/widgets/standings/standings_table.dart
+// lib/widgets/standings/standings_table.dart (mejorado para tema oscuro)
 import 'package:flutter/material.dart';
 import '../../models/game.dart';
 import '../../models/team.dart';
@@ -28,6 +28,7 @@ class StandingsTableState extends State<StandingsTable> {
     final positions = _calculatePositions(sortedTeams);
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     return RepaintBoundary(
       key: tableKey,
@@ -40,8 +41,8 @@ class StandingsTableState extends State<StandingsTable> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return isSmallScreen
-                ? _buildCompactVerticalTable(sortedTeams, positions)
-                : _buildFullVerticalTable(sortedTeams, positions);
+                ? _buildCompactVerticalTable(sortedTeams, positions, isDarkMode)
+                : _buildFullVerticalTable(sortedTeams, positions, isDarkMode);
           },
         ),
       ),
@@ -49,14 +50,22 @@ class StandingsTableState extends State<StandingsTable> {
   }
   
   // Nueva tabla vertical compacta
-  Widget _buildCompactVerticalTable(List<Team> sortedTeams, Map<int, int> positions) {
+  Widget _buildCompactVerticalTable(List<Team> sortedTeams, Map<int, int> positions, bool isDarkMode) {
+    // Colores adaptados para modo oscuro
+    final headerColor = isDarkMode ? Colors.grey[800] : Colors.grey[100];
+    final evenRowColor = isDarkMode ? Colors.grey[900] : Colors.grey[50];
+    final oddRowColor = isDarkMode ? Colors.grey[850] : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey[700] : Colors.grey[200];
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    //final subtitleColor = isDarkMode ? Colors.grey[400] : Colors.grey[700];
+    
     return SingleChildScrollView(
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: headerColor,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -64,32 +73,44 @@ class StandingsTableState extends State<StandingsTable> {
             ),
             child: Row(
               children: [
-                const SizedBox(width: 100, child: Text('Juego')),
+                SizedBox(
+                  width: 100, 
+                  child: Text(
+                    'Juego',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  )
+                ),
                 ...widget.teams.map((team) => Expanded(
-                      child: Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: team.teamColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                team.name,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          ],
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: team.teamColor,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-                    )),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            team.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
               ],
             ),
           ),
@@ -97,10 +118,10 @@ class StandingsTableState extends State<StandingsTable> {
             final game = widget.games[gameIndex];
             return Container(
               decoration: BoxDecoration(
-                color: gameIndex.isEven ? Colors.grey[50] : Colors.white,
+                color: gameIndex.isEven ? evenRowColor : oddRowColor,
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.grey[200]!,
+                    color: borderColor!,
                     width: 1,
                   ),
                 ),
@@ -117,17 +138,21 @@ class StandingsTableState extends State<StandingsTable> {
                       child: Text(
                         game.name,
                         overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: textColor),
                       ),
                     ),
                     ...widget.teams.map((team) => Expanded(
-                          child: Center(
-                            child: Text(
-                              team.gameScores.length > gameIndex
-                                  ? (team.gameScores[gameIndex]?.toString() ?? '-')
-                                  : '-',
-                            ),
+                      child: Center(
+                        child: Text(
+                          team.gameScores.length > gameIndex
+                              ? (team.gameScores[gameIndex]?.toString() ?? '-')
+                              : '-',
+                          style: TextStyle(
+                            color: isDarkMode ? team.teamColor.withOpacity(0.9) : team.teamColor,
                           ),
-                        )),
+                        ),
+                      ),
+                    )),
                   ],
                 ),
               ),
@@ -136,10 +161,10 @@ class StandingsTableState extends State<StandingsTable> {
           // Añadimos la fila de posiciones justo antes del TOTAL
           Container(
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: evenRowColor,
               border: Border(
                 bottom: BorderSide(
-                  color: Colors.grey[200]!,
+                  color: borderColor!,
                   width: 1,
                 ),
               ),
@@ -151,36 +176,39 @@ class StandingsTableState extends State<StandingsTable> {
               ),
               child: Row(
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 100,
                     child: Text(
                       'POSICIÓN',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
                     ),
                   ),
                   ...widget.teams.map((team) => Expanded(
+                    child: Center(
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: team.teamColor.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: team.teamColor),
+                        ),
                         child: Center(
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: team.teamColor.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: team.teamColor),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${positions[team.id]}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: team.teamColor,
-                                  fontSize: 12,
-                                ),
-                              ),
+                          child: Text(
+                            '${positions[team.id]}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? team.teamColor.withOpacity(0.9) : team.teamColor,
+                              fontSize: 12,
                             ),
                           ),
                         ),
-                      )),
+                      ),
+                    ),
+                  )),
                 ],
               ),
             ),
@@ -188,7 +216,7 @@ class StandingsTableState extends State<StandingsTable> {
           // Fila para el total acumulado
           Container(
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: headerColor,
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(16),
                 bottomRight: Radius.circular(16),
@@ -201,30 +229,33 @@ class StandingsTableState extends State<StandingsTable> {
               ),
               child: Row(
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 100,
                     child: Text(
                       'TOTAL',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
                     ),
                   ),
                   ...widget.teams.map((team) => Expanded(
-                        child: Center(
-                          child: TweenAnimationBuilder<int>(
-                            tween: IntTween(begin: 0, end: team.totalScore),
-                            duration: const Duration(milliseconds: 800),
-                            builder: (context, value, child) {
-                              return Text(
-                                '$value',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: team.teamColor,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      )),
+                    child: Center(
+                      child: TweenAnimationBuilder<int>(
+                        tween: IntTween(begin: 0, end: team.totalScore),
+                        duration: const Duration(milliseconds: 800),
+                        builder: (context, value, child) {
+                          return Text(
+                            '$value',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? team.teamColor.withOpacity(0.9) : team.teamColor,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  )),
                 ],
               ),
             ),
@@ -235,7 +266,12 @@ class StandingsTableState extends State<StandingsTable> {
   }
   
   // Nueva tabla vertical completa
-  Widget _buildFullVerticalTable(List<Team> sortedTeams, Map<int, int> positions) {
+  Widget _buildFullVerticalTable(List<Team> sortedTeams, Map<int, int> positions, bool isDarkMode) {
+    final headerColor = isDarkMode ? Colors.grey[800] : Colors.grey[100];
+    final evenRowColor = isDarkMode ? Colors.grey[900] : Colors.grey[50];
+    final textColor = isDarkMode ? Colors.white : Colors.grey[800];
+    final borderColor = isDarkMode ? Colors.grey[700] : Colors.grey[300];
+    
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +283,7 @@ class StandingsTableState extends State<StandingsTable> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+                color: textColor,
               ),
             ),
           ),
@@ -255,144 +291,162 @@ class StandingsTableState extends State<StandingsTable> {
             columnSpacing: 16.0,
             headingRowHeight: 48.0,
             dataRowHeight: 56.0,
-            headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+            headingRowColor: MaterialStateProperty.all(headerColor),
             border: TableBorder.all(
-              color: Colors.grey[300]!,
+              color: borderColor!,
               width: 1,
               borderRadius: BorderRadius.circular(8),
             ),
             columns: [
-              const DataColumn(
+              DataColumn(
                 label: Text(
                   'Juego',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
               ),
               ...widget.teams.map((team) => DataColumn(
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: team.teamColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            team.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: team.teamColor,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  )),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        team.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
             ],
             rows: [
               ...List.generate(widget.games.length, (gameIndex) {
                 final game = widget.games[gameIndex];
                 return DataRow(
+                  color: gameIndex.isEven 
+                      ? MaterialStateProperty.all(evenRowColor)
+                      : null,
                   cells: [
-                    DataCell(Text(game.name)),
+                    DataCell(Text(
+                      game.name,
+                      style: TextStyle(color: textColor),
+                    )),
                     ...widget.teams.map((team) => DataCell(
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: team.gameScores.length > gameIndex &&
-                                        team.gameScores[gameIndex] != null
-                                    ? team.teamColor.withOpacity(0.1)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                team.gameScores.length > gameIndex
-                                    ? (team.gameScores[gameIndex]?.toString() ?? '-')
-                                    : '-',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: team.gameScores.length > gameIndex &&
-                                          team.gameScores[gameIndex] != null
-                                      ? team.teamColor
-                                      : Colors.grey,
-                                ),
-                              ),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: team.gameScores.length > gameIndex &&
+                                    team.gameScores[gameIndex] != null
+                                ? team.teamColor.withOpacity(isDarkMode ? 0.2 : 0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            team.gameScores.length > gameIndex
+                                ? (team.gameScores[gameIndex]?.toString() ?? '-')
+                                : '-',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: team.gameScores.length > gameIndex &&
+                                      team.gameScores[gameIndex] != null
+                                  ? (isDarkMode ? team.teamColor.withOpacity(0.9) : team.teamColor)
+                                  : (isDarkMode ? Colors.grey[400] : Colors.grey),
                             ),
                           ),
-                        )),
+                        ),
+                      ),
+                    )),
                   ],
                 );
               }),
               // Fila de posiciones
               DataRow(
-                color: MaterialStateProperty.all(Colors.grey[50]),
+                color: MaterialStateProperty.all(evenRowColor),
                 cells: [
-                  const DataCell(Text(
+                  DataCell(Text(
                     'POSICIÓN',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
                   )),
                   ...widget.teams.map((team) => DataCell(
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: team.teamColor.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              '${positions[team.id]}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: team.teamColor,
-                              ),
-                            ),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: team.teamColor.withOpacity(isDarkMode ? 0.3 : 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${positions[team.id]}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? team.teamColor.withOpacity(0.9) : team.teamColor,
                           ),
                         ),
-                      )),
+                      ),
+                    ),
+                  )),
                 ],
               ),
               // Fila total
               DataRow(
-                color: MaterialStateProperty.all(Colors.grey[100]),
+                color: MaterialStateProperty.all(headerColor),
                 cells: [
-                  const DataCell(Text(
+                  DataCell(Text(
                     'TOTAL',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
                   )),
                   ...widget.teams.map((team) => DataCell(
-                        Center(
-                          child: TweenAnimationBuilder<int>(
-                            tween: IntTween(begin: 0, end: team.totalScore),
-                            duration: const Duration(milliseconds: 800),
-                            builder: (context, value, child) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: team.teamColor.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  '$value',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: team.teamColor,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      )),
+                    Center(
+                      child: TweenAnimationBuilder<int>(
+                        tween: IntTween(begin: 0, end: team.totalScore),
+                        duration: const Duration(milliseconds: 800),
+                        builder: (context, value, child) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: team.teamColor.withOpacity(isDarkMode ? 0.3 : 0.2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              '$value',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: isDarkMode ? team.teamColor.withOpacity(0.9) : team.teamColor,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  )),
                 ],
               ),
             ],
