@@ -135,5 +135,6 @@ class StorageService {
     await prefs.remove(_gamesKey);
     await prefs.remove(_maxGridNumbersKey);
     await prefs.remove(_configStateKey);
+    await prefs.remove(_scoreHistoryKey);
   }
 }

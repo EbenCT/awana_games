@@ -36,21 +36,24 @@ void editScore(int teamId, int gameIndex, int newScore) {
   final oldScore = team.gameScores.length > gameIndex ? team.gameScores[gameIndex] : null;
   
   // Registrar el cambio en el historial
-  _scoreChangeHistory.add({
-    'timestamp': DateTime.now().millisecondsSinceEpoch,
-    'teamId': teamId,
-    'teamName': team.name,
-    'gameIndex': gameIndex,
-    'oldScore': oldScore,
-    'newScore': newScore,
-  });
-  
-  // Actualizar el equipo con la nueva puntuación
-  _teams[teamIndex] = team.updateGameScore(gameIndex, newScore);
-  
-  _saveTeams();
-  _saveScoreHistory(); // Nuevo método para guardar el historial
-  notifyListeners();
+  if (oldScore != newScore) {
+    // Solo registrar en el historial si hubo un cambio real
+    _scoreChangeHistory.add({
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'teamId': teamId,
+      'teamName': team.name,
+      'gameIndex': gameIndex,
+      'oldScore': oldScore,
+      'newScore': newScore,
+    });
+    
+    // Actualizar el equipo con la nueva puntuación
+    _teams[teamIndex] = team.updateGameScore(gameIndex, newScore);
+    
+    _saveTeams();
+    _saveScoreHistory(); // Guardar el historial actualizado
+    notifyListeners();
+  }
 }
 
 // Método para guardar el historial de cambios
@@ -100,6 +103,8 @@ Future<void> _saveScoreHistory() async {
         roundPoints: [], // Inicializar lista de puntos por rondas
       );
     }
+    _scoreChangeHistory.clear();
+    _saveScoreHistory();
     _saveTeams();
     notifyListeners();
   }
@@ -220,6 +225,13 @@ Future<void> _saveScoreHistory() async {
     _saveTeams();
     notifyListeners();
   }
+
+// Método para limpiar el historial de cambios
+void clearScoreHistory() {
+  _scoreChangeHistory.clear();
+  _saveScoreHistory();
+  notifyListeners();
+}
 
   // Método privado para guardar equipos
   Future<void> _saveTeams() async {

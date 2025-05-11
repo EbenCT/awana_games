@@ -55,14 +55,14 @@ class _EditScoreScreenState extends State<EditScoreScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text('Editar Puntuaciones: ${game.name}'),
+        title: Text('Editar: ${game.name}'),
         actions: [
           TextButton.icon(
             onPressed: _saveScores,
             icon: const Icon(Icons.save),
             label: const Text('Guardar'),
             style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
+              foregroundColor: isDarkMode ? Colors.white : Colors.black,
             ),
           ),
         ],

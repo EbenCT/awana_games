@@ -23,7 +23,7 @@ class ScoreHistoryScreen extends StatelessWidget {
         title: const Text('Historial de Cambios'),
       ),
       body: history.isEmpty
-          ? Center(
+        ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -34,16 +34,25 @@ class ScoreHistoryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No hay historial de cambios',
+                    'No hay cambios registrados',
                     style: TextStyle(
                       fontSize: 18,
                       color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Los cambios en las puntuaciones se mostrarán aquí',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                    ),
+                  ),
                 ],
               ),
             )
-          : ListView.builder(
+            : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: history.length,
               itemBuilder: (context, index) {

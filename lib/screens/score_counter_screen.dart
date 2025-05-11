@@ -30,6 +30,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
   Map<int, int> currentGameScores = {};
   Map<int, int> currentRoundPoints = {}; // Para mantener los puntos por rondas del juego actual
   bool lockGameTypeSelector = false;
+  bool _showTimer = false;
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       if (gameProvider.currentGame != null) {
         setState(() {
           activeGameType = gameProvider.currentGame!.type;
+          _showTimer = gameProvider.currentGame!.hasTimer;
         });
       }
       
@@ -59,6 +61,13 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
     final gameIndex = gameProvider.currentGameIndex;
     final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
+    
+    // Actualizar estado del temporizador basado en el juego actual
+    if (gameProvider.currentGame != null) {
+      setState(() {
+        _showTimer = gameProvider.currentGame!.hasTimer;
+      });
+    }
     
     // Verificar si algún equipo ya tiene puntuación para este juego
     bool anyTeamHasScore = false;
@@ -389,11 +398,7 @@ void _handleTimerEnd() {
           
           // Limpiar números seleccionados pero mantener el máximo de la grilla
           selectedNumbers.clear();
-          
-          // Actualizar el tipo de juego según el nuevo juego actual
-          if (gameProvider.currentGame != null) {
-            activeGameType = gameProvider.currentGame!.type;
-          }
+
         });
         
         // Verificar si el nuevo juego ya tiene puntuaciones asignadas
@@ -441,80 +446,83 @@ void _showAddExtraGameDialog() {
                 ),
                 const SizedBox(height: 16),
                 
-                // Opción de temporizador
-                SwitchListTile(
-                  title: const Text('Habilitar Temporizador'),
-                  subtitle: Text(
-                    hasTimer 
-                        ? 'Este juego tendrá temporizador' 
-                        : 'Jugar sin límite de tiempo',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                // Opción de temporizador (más compacta)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.timer,
+                          color: hasTimer 
+                              ? Theme.of(context).colorScheme.primary 
+                              : isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Temporizador',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: hasTimer 
+                                ? Theme.of(context).colorScheme.primary 
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  value: hasTimer,
-                  onChanged: (value) {
-                    setState(() {
-                      hasTimer = value;
-                    });
-                  },
-                  secondary: Icon(
-                    Icons.timer,
-                    color: hasTimer 
-                        ? Theme.of(context).colorScheme.primary 
-                        : isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                
-                // Si el temporizador está habilitado, mostrar opciones de duración
-                if (hasTimer) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.access_time,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text('Duración:'),
-                      const SizedBox(width: 16),
-                      DropdownButton<int>(
-                        value: timerDuration,
-                        items: [
-                          DropdownMenuItem(
-                            value: 60,
-                            child: const Text('1 minuto'),
+                    Row(
+                      children: [
+                        // Si está habilitado, mostrar opciones de duración
+                        if (hasTimer)
+                          DropdownButton<int>(
+                            value: timerDuration,
+                            underline: Container(), // Quitar la línea inferior
+                            isDense: true,
+                            items: [
+                              DropdownMenuItem(
+                                value: 60,
+                                child: const Text('1 min'),
+                              ),
+                              DropdownMenuItem(
+                                value: 120,
+                                child: const Text('2 min'),
+                              ),
+                              DropdownMenuItem(
+                                value: 180,
+                                child: const Text('3 min'),
+                              ),
+                              DropdownMenuItem(
+                                value: 300,
+                                child: const Text('5 min'),
+                              ),
+                              DropdownMenuItem(
+                                value: 600,
+                                child: const Text('10 min'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  timerDuration = value;
+                                });
+                              }
+                            },
                           ),
-                          DropdownMenuItem(
-                            value: 120,
-                            child: const Text('2 minutos'),
-                          ),
-                          DropdownMenuItem(
-                            value: 180,
-                            child: const Text('3 minutos'),
-                          ),
-                          DropdownMenuItem(
-                            value: 300,
-                            child: const Text('5 minutos'),
-                          ),
-                          DropdownMenuItem(
-                            value: 600,
-                            child: const Text('10 minutos'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: hasTimer,
+                          onChanged: (value) {
                             setState(() {
-                              timerDuration = value;
+                              hasTimer = value;
                             });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ],
+                          },
+                          activeColor: Theme.of(context).colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -557,6 +565,15 @@ void _showAddExtraGameDialog() {
     final gameProvider = Provider.of<GameProvider>(context);
     final currentGame = gameProvider.currentGame;
     final isLastGame = !gameProvider.hasNextGame();
+
+    // Actualizar _showTimer basado en el juego actual
+    if (currentGame != null && _showTimer != currentGame.hasTimer) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _showTimer = currentGame.hasTimer;
+        });
+      });
+    }
     
     return WillPopScope(
       // Evitar que se pueda volver atrás con el botón físico
@@ -580,7 +597,7 @@ void _showAddExtraGameDialog() {
                   const SizedBox(height: 16),
 
                 // Temporizador (si está habilitado)
-                if (currentGame != null && currentGame.hasTimer)
+                if (_showTimer && currentGame != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: GameTimer(
