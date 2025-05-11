@@ -1,4 +1,4 @@
-// lib/screens/score_counter_screen.dart
+// lib/screens/score_counter_screen.dart (con correcciones)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game.dart';
@@ -47,7 +47,9 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
       if (gameProvider.currentGame != null) {
         setState(() {
           activeGameType = gameProvider.currentGame!.type;
+          // Inicializar correctamente el estado del temporizador
           _showTimer = gameProvider.currentGame!.hasTimer;
+          print("initState - Juego: ${gameProvider.currentGame!.name}, Timer: $_showTimer"); // Debug
         });
       }
       
@@ -64,8 +66,11 @@ class _ScoreCounterScreenState extends State<ScoreCounterScreen> {
     
     // Actualizar estado del temporizador basado en el juego actual
     if (gameProvider.currentGame != null) {
+      final hasTimer = gameProvider.currentGame!.hasTimer;
+      print("_checkIfScoresAlreadyAssigned - Juego: ${gameProvider.currentGame!.name}, Timer: $hasTimer"); // Debug
+      
       setState(() {
-        _showTimer = gameProvider.currentGame!.hasTimer;
+        _showTimer = hasTimer;
       });
     }
     
@@ -398,7 +403,12 @@ void _handleTimerEnd() {
           
           // Limpiar números seleccionados pero mantener el máximo de la grilla
           selectedNumbers.clear();
-
+          
+          // IMPORTANTE: Actualizar el tipo de juego y el estado del temporizador
+          activeGameType = gameProvider.currentGame!.type;
+          _showTimer = gameProvider.currentGame!.hasTimer;
+          
+          print("_nextGame - Nuevo juego: ${gameProvider.currentGame!.name}, Timer: $_showTimer"); // Debug
         });
         
         // Verificar si el nuevo juego ya tiene puntuaciones asignadas
@@ -411,169 +421,161 @@ void _handleTimerEnd() {
   }
 
   // Mostrar el diálogo para agregar un juego extra
-// En ScoreCounterScreen, modificar _showAddExtraGameDialog:
-
-void _showAddExtraGameDialog() {
-  final TextEditingController controller = TextEditingController(text: 'Juego Extra');
-  bool hasTimer = false;
-  int timerDuration = 300; // 5 minutos por defecto
-  
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) {
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        
-        return AlertDialog(
-          title: const Text('Añadir Juego Extra'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Añadirás un juego extra al final de la lista. El juego actual se mantendrá como último hasta que lo finalices.',
-                  style: TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre del juego extra',
-                    border: OutlineInputBorder(),
+  void _showAddExtraGameDialog() {
+    final TextEditingController controller = TextEditingController(text: 'Juego Extra');
+    bool hasTimer = false;
+    int timerDuration = 300; // 5 minutos por defecto
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+          
+          return AlertDialog(
+            title: const Text('Añadir Juego Extra'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Añadirás un juego extra al final de la lista. El juego actual se mantendrá como último hasta que lo finalices.',
+                    style: TextStyle(fontSize: 14),
                   ),
-                  autofocus: true,
-                ),
-                const SizedBox(height: 16),
-                
-                // Opción de temporizador (más compacta)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.timer,
-                          color: hasTimer 
-                              ? Theme.of(context).colorScheme.primary 
-                              : isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Temporizador',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre del juego extra',
+                      border: OutlineInputBorder(),
+                    ),
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Opción de temporizador (más compacta)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.timer,
                             color: hasTimer 
                                 ? Theme.of(context).colorScheme.primary 
-                                : null,
+                                : isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            size: 18,
                           ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        // Si está habilitado, mostrar opciones de duración
-                        if (hasTimer)
-                          DropdownButton<int>(
-                            value: timerDuration,
-                            underline: Container(), // Quitar la línea inferior
-                            isDense: true,
-                            items: [
-                              DropdownMenuItem(
-                                value: 60,
-                                child: const Text('1 min'),
-                              ),
-                              DropdownMenuItem(
-                                value: 120,
-                                child: const Text('2 min'),
-                              ),
-                              DropdownMenuItem(
-                                value: 180,
-                                child: const Text('3 min'),
-                              ),
-                              DropdownMenuItem(
-                                value: 300,
-                                child: const Text('5 min'),
-                              ),
-                              DropdownMenuItem(
-                                value: 600,
-                                child: const Text('10 min'),
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          Text(
+                            'Temporizador',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: hasTimer 
+                                  ? Theme.of(context).colorScheme.primary 
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          // Si está habilitado, mostrar opciones de duración
+                          if (hasTimer)
+                            DropdownButton<int>(
+                              value: timerDuration,
+                              underline: Container(), // Quitar la línea inferior
+                              isDense: true,
+                              items: [
+                                DropdownMenuItem(
+                                  value: 60,
+                                  child: const Text('1 min'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 120,
+                                  child: const Text('2 min'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 180,
+                                  child: const Text('3 min'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 300,
+                                  child: const Text('5 min'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 600,
+                                  child: const Text('10 min'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    timerDuration = value;
+                                  });
+                                }
+                              },
+                            ),
+                          const SizedBox(width: 8),
+                          Switch(
+                            value: hasTimer,
                             onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  timerDuration = value;
-                                });
-                              }
+                              setState(() {
+                                hasTimer = value;
+                              });
                             },
+                            activeColor: Theme.of(context).colorScheme.primary,
                           ),
-                        const SizedBox(width: 8),
-                        Switch(
-                          value: hasTimer,
-                          onChanged: (value) {
-                            setState(() {
-                              hasTimer = value;
-                            });
-                          },
-                          activeColor: Theme.of(context).colorScheme.primary,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Añadir el juego extra
-                final gameProvider = Provider.of<GameProvider>(context, listen: false);
-                gameProvider.addExtraGame(controller.text.trim());
-                
-                // Actualizar la configuración del temporizador
-                final gameIndex = gameProvider.games.length - 1;
-                gameProvider.updateGameTimer(gameIndex, hasTimer, timerDuration);
-                
-                Navigator.pop(context);
-                
-                // Mostrar mensaje de confirmación
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Juego extra añadido correctamente'),
-                    backgroundColor: Colors.green,
+                        ],
+                      ),
+                    ],
                   ),
-                );
-              },
-              child: const Text('Añadir'),
+                ],
+              ),
             ),
-          ],
-        );
-      },
-    ),
-  );
-}
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Añadir el juego extra
+                  final gameProvider = Provider.of<GameProvider>(context, listen: false);
+                  gameProvider.addExtraGame(controller.text.trim());
+                  
+                  // Actualizar la configuración del temporizador
+                  final gameIndex = gameProvider.games.length - 1;
+                  gameProvider.updateGameTimer(gameIndex, hasTimer, timerDuration);
+                  
+                  Navigator.pop(context);
+                  
+                  // Mostrar mensaje de confirmación
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Juego extra añadido correctamente'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                child: const Text('Añadir'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context);
     final gameProvider = Provider.of<GameProvider>(context);
     final currentGame = gameProvider.currentGame;
     final isLastGame = !gameProvider.hasNextGame();
-
-    // Actualizar _showTimer basado en el juego actual
-    if (currentGame != null && _showTimer != currentGame.hasTimer) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _showTimer = currentGame.hasTimer;
-        });
-      });
-    }
+    
+    // Removimos el código que actualizaba _showTimer aquí para evitar problemas
     
     return WillPopScope(
       // Evitar que se pueda volver atrás con el botón físico
@@ -597,7 +599,7 @@ void _showAddExtraGameDialog() {
                   const SizedBox(height: 16),
 
                 // Temporizador (si está habilitado)
-                if (_showTimer && currentGame != null)
+                if (_showTimer && currentGame != null) // Mejoramos esta condición
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: GameTimer(

@@ -1,4 +1,4 @@
-// lib/providers/game_provider.dart
+// lib/providers/game_provider.dart (código completo con correcciones)
 import 'package:flutter/foundation.dart';
 import '../models/game.dart';
 import '../services/storage_service.dart';
@@ -73,28 +73,34 @@ class GameProvider extends ChangeNotifier {
   }
 
   // Método para configurar inicialmente los juegos
-void configureGames(List<String> gameNames) {
-  _games.clear();
-  
-  for (int i = 0; i < gameNames.length; i++) {
-    if (gameNames[i].isNotEmpty) {
-      _games.add(Game(
-        id: i + 1,
-        name: gameNames[i],
-        type: GameType.normal, // Por defecto todos son juegos normales
-        isCompleted: false,
-        isCurrent: i == 0, // El primer juego es el actual
-        hasTimer: false, // Por defecto sin temporizador
-        timerDuration: 300, // 5 minutos por defecto
-      ));
+  void configureGames(List<String> gameNames) {
+    _games.clear();
+    
+    for (int i = 0; i < gameNames.length; i++) {
+      if (gameNames[i].isNotEmpty) {
+        _games.add(Game(
+          id: i + 1,
+          name: gameNames[i],
+          type: GameType.normal, // Por defecto todos son juegos normales
+          isCompleted: false,
+          isCurrent: i == 0, // El primer juego es el actual
+          hasTimer: false, // Por defecto sin temporizador
+          timerDuration: 300, // 5 minutos por defecto
+        ));
+      }
+    }
+    
+    _isConfigured = true;
+    _saveGames();
+    _saveConfigState();
+    notifyListeners();
+    
+    // Imprimir información de depuración
+    for (var game in _games) {
+      print("Juego configurado: ${game.name}, Timer: ${game.hasTimer}, Duración: ${game.timerDuration}");
     }
   }
-  
-  _isConfigured = true;
-  _saveGames();
-  _saveConfigState();
-  notifyListeners();
-}
+
   // Añadir un nuevo juego
   void addGame() {
     final nextGameIndex = _games.length + 1;
@@ -103,6 +109,8 @@ void configureGames(List<String> gameNames) {
       name: 'Juego $nextGameIndex',
       type: GameType.normal,
       isCurrent: _games.isEmpty, // Si es el primer juego, marcarlo como actual
+      hasTimer: false, // Por defecto sin temporizador
+      timerDuration: 300, // 5 minutos por defecto
     ));
 
     _selectedNumbers.clear(); // Limpiar números seleccionados al añadir nuevo juego
@@ -111,22 +119,22 @@ void configureGames(List<String> gameNames) {
   }
 
   // Añadir un juego extra (al final)
-void addExtraGame(String name) {
-  final nextGameIndex = _games.length + 1;
-  final newGame = Game(
-    id: nextGameIndex,
-    name: name.isNotEmpty ? name : 'Juego Extra $nextGameIndex',
-    type: GameType.normal,
-    isCompleted: false,
-    isCurrent: false, // No es el actual todavía
-    hasTimer: false, // Por defecto sin temporizador
-    timerDuration: 300, // 5 minutos por defecto
-  );
-  
-  _games.add(newGame);
-  _saveGames();
-  notifyListeners();
-}
+  void addExtraGame(String name) {
+    final nextGameIndex = _games.length + 1;
+    final newGame = Game(
+      id: nextGameIndex,
+      name: name.isNotEmpty ? name : 'Juego Extra $nextGameIndex',
+      type: GameType.normal,
+      isCompleted: false,
+      isCurrent: false, // No es el actual todavía
+      hasTimer: false, // Por defecto sin temporizador
+      timerDuration: 300, // 5 minutos por defecto
+    );
+    
+    _games.add(newGame);
+    _saveGames();
+    notifyListeners();
+  }
 
   void resetGames() {
     _games.clear();
@@ -163,6 +171,9 @@ void addExtraGame(String name) {
         type: _games[gameIndex].type,
         isCompleted: _games[gameIndex].isCompleted,
         isCurrent: _games[gameIndex].isCurrent,
+        // Preservar la configuración del temporizador
+        hasTimer: _games[gameIndex].hasTimer,
+        timerDuration: _games[gameIndex].timerDuration,
       );
       _saveGames();
       notifyListeners();
@@ -177,6 +188,9 @@ void addExtraGame(String name) {
         type: type,
         isCompleted: _games[gameIndex].isCompleted,
         isCurrent: _games[gameIndex].isCurrent,
+        // Preservar la configuración del temporizador
+        hasTimer: _games[gameIndex].hasTimer,
+        timerDuration: _games[gameIndex].timerDuration,
       );
       _saveGames();
       notifyListeners();
@@ -192,6 +206,9 @@ void addExtraGame(String name) {
         type: _games[gameIndex].type,
         isCompleted: true,
         isCurrent: _games[gameIndex].isCurrent, // Mantiene su estado actual
+        // Preservar la configuración del temporizador
+        hasTimer: _games[gameIndex].hasTimer,
+        timerDuration: _games[gameIndex].timerDuration,
       );
       
       _saveGames();
@@ -204,23 +221,32 @@ void addExtraGame(String name) {
     final currentIndex = _games.indexWhere((game) => game.isCurrent);
     
     if (currentIndex >= 0 && currentIndex < _games.length - 1) {
-      // Marcar el juego actual como completado y no actual
+      // Marcar el juego actual como completado y no actual, pero preservando la configuración del temporizador
       _games[currentIndex] = Game(
         id: _games[currentIndex].id,
         name: _games[currentIndex].name,
         type: _games[currentIndex].type,
         isCompleted: true,
         isCurrent: false,
+        hasTimer: _games[currentIndex].hasTimer,
+        timerDuration: _games[currentIndex].timerDuration,
       );
       
-      // Establecer el siguiente juego como actual
+      // Establecer el siguiente juego como actual, preservando la configuración del temporizador
       _games[currentIndex + 1] = Game(
         id: _games[currentIndex + 1].id,
         name: _games[currentIndex + 1].name,
         type: _games[currentIndex + 1].type,
         isCompleted: false,
         isCurrent: true,
+        hasTimer: _games[currentIndex + 1].hasTimer,
+        timerDuration: _games[currentIndex + 1].timerDuration,
       );
+      
+      // Imprimir información de depuración para verificar el estado del temporizador
+      print("Avanzando al siguiente juego: ${_games[currentIndex + 1].name}");
+      print("Temporizador habilitado: ${_games[currentIndex + 1].hasTimer}");
+      print("Duración temporizador: ${_games[currentIndex + 1].timerDuration} segundos");
       
       _saveGames();
       notifyListeners();
@@ -240,6 +266,9 @@ void addExtraGame(String name) {
           type: _games[i].type,
           isCompleted: _games[i].isCompleted,
           isCurrent: i == gameIndex,
+          // Preservar la configuración del temporizador
+          hasTimer: _games[i].hasTimer,
+          timerDuration: _games[i].timerDuration,
         );
       }
     }
@@ -301,6 +330,11 @@ void addExtraGame(String name) {
         hasTimer: hasTimer,
         timerDuration: timerDuration,
       );
+      
+      // Imprimir información de depuración
+      print("Actualizado el temporizador para el juego ${_games[gameIndex].name}:");
+      print("hasTimer: $hasTimer, timerDuration: $timerDuration");
+      
       _saveGames();
       notifyListeners();
     }
