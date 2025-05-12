@@ -1,11 +1,12 @@
-// lib/widgets/common/configuration_menu.dart (corregido)
+// lib/widgets/common/configuration_menu.dart (actualizado)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../providers/teams_provider.dart';
 import '../../providers/game_provider.dart';
+import '../../providers/schedule_provider.dart'; // Añadido
 import '../../screens/team_config_screen.dart';
-import '../common/theme_toggle.dart';
+import '../common/theme_toggle.dart';// Añadido
 
 class ConfigurationMenu extends StatelessWidget {
   const ConfigurationMenu({Key? key}) : super(key: key);
@@ -22,17 +23,19 @@ class ConfigurationMenu extends StatelessWidget {
   void _showConfigMenu(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false); // Añadido
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Importante para que se pueda hacer scroll
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6, // Controla cuánto espacio ocupa inicialmente
-        minChildSize: 0.3, // Mínimo tamaño al deslizar
-        maxChildSize: 0.9, // Tamaño máximo al expandir
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
         expand: false,
         builder: (context, scrollController) {
           return SingleChildScrollView(
@@ -47,9 +50,7 @@ class ConfigurationMenu extends StatelessWidget {
                     height: 4,
                     width: 40,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.grey[600] 
-                          : Colors.grey[300],
+                      color: isDarkMode ? Colors.grey[600] : Colors.grey[300],
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -66,6 +67,28 @@ class ConfigurationMenu extends StatelessWidget {
                   // Toggle de tema
                   const ThemeToggle(),
                   const Divider(),
+                  
+                  // Nueva opción para configurar programación
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                      child: Icon(
+                        Icons.notifications_active,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    title: const Text('Programación de Juegos'),
+                    subtitle: Consumer<ScheduleProvider>(
+                      builder: (context, provider, _) {
+                        final formattedSchedule = provider.getFormattedSchedule();
+                        return Text(formattedSchedule);
+                      },
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/schedule_settings');
+                    },
+                  ),
                   
                   // Opciones de configuración
                   ListTile(
@@ -89,7 +112,7 @@ class ConfigurationMenu extends StatelessWidget {
                     },
                   ),
                   
-                  // Nueva opción para reconfigurar juegos
+                  // Opción para reconfigurar juegos
                   ListTile(
                     leading: CircleAvatar(
                       backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),

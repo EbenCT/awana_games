@@ -1,4 +1,4 @@
-// lib/services/storage_service.dart
+// lib/services/storage_service.dart (actualizado)
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/team.dart';
@@ -11,6 +11,10 @@ class StorageService {
   static const String _maxGridNumbersKey = 'maxGridNumbers';
   static const String _configStateKey = 'configState';
   static const String _scoreHistoryKey = 'scoreHistory';
+  static const String _onboardingCompletedKey = 'onboarding_completed'; // Añadido
+  static const String _scheduleDayKey = 'schedule_day'; // Añadido
+  static const String _scheduleTimeKey = 'schedule_time_minutes'; // Añadido
+  static const String _notificationsEnabledKey = 'notifications_enabled'; // Añadido
 
   // Guardar equipos
   static Future<void> saveTeams(List<Team> teams) async {
@@ -21,7 +25,7 @@ class StorageService {
       'teamColor': team.teamColor.value,
       'totalScore': team.totalScore,
       'gameScores': team.gameScores,
-      'roundPoints': team.roundPoints, // Guardamos la lista de puntos por rondas
+      'roundPoints': team.roundPoints,
     }).toList();
     await prefs.setString(_teamsKey, jsonEncode(teamsData));
   }
@@ -39,7 +43,7 @@ class StorageService {
         teamColor: Color(data['teamColor']),
         totalScore: data['totalScore'],
         gameScores: List<int?>.from(data['gameScores'] ?? []),
-        roundPoints: List<int?>.from(data['roundPoints'] ?? []), // Cargamos la lista de puntos por rondas
+        roundPoints: List<int?>.from(data['roundPoints'] ?? []),
       )).toList();
     } catch (e) {
       print('Error loading teams: $e');
@@ -75,7 +79,7 @@ class StorageService {
         isCompleted: data['isCompleted'],
         isCurrent: data['isCurrent'],
         type: GameType.values[data['type']],
-        hasTimer: data['hasTimer'] ?? false, // Nuevo campo con valor por defecto
+        hasTimer: data['hasTimer'] ?? false,
         timerDuration: data['timerDuration'] ?? 300,
       )).toList();
     } catch (e) {
@@ -128,6 +132,54 @@ class StorageService {
     return prefs.getBool(_configStateKey);
   }
 
+  // Guardar el estado del onboarding
+  static Future<void> saveOnboardingState(bool completed) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingCompletedKey, completed);
+  }
+
+  // Cargar el estado del onboarding
+  static Future<bool> loadOnboardingState() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_onboardingCompletedKey) ?? false;
+  }
+
+  // Guardar programación (día)
+  static Future<void> saveScheduleDay(String day) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_scheduleDayKey, day);
+  }
+
+  // Cargar programación (día)
+  static Future<String?> loadScheduleDay() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_scheduleDayKey);
+  }
+
+  // Guardar programación (tiempo en minutos)
+  static Future<void> saveScheduleTime(int minutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_scheduleTimeKey, minutes);
+  }
+
+  // Cargar programación (tiempo en minutos)
+  static Future<int?> loadScheduleTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_scheduleTimeKey);
+  }
+
+  // Guardar estado de las notificaciones
+  static Future<void> saveNotificationsState(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notificationsEnabledKey, enabled);
+  }
+
+  // Cargar estado de las notificaciones
+  static Future<bool?> loadNotificationsState() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_notificationsEnabledKey);
+  }
+
   // Limpiar todos los datos guardados
   static Future<void> clearAllData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -136,5 +188,6 @@ class StorageService {
     await prefs.remove(_maxGridNumbersKey);
     await prefs.remove(_configStateKey);
     await prefs.remove(_scoreHistoryKey);
+    // No limpiamos la configuración de programación y notificaciones a propósito
   }
 }
