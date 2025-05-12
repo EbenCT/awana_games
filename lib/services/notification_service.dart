@@ -1,4 +1,4 @@
-// lib/services/notification_service.dart (corregido)
+// lib/services/notification_service.dart (actualizado para versión 18.0.1)
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -128,7 +128,8 @@ class NotificationService {
       'Ingresa a la app para comenzar tu tiempo de juegos',
       scheduledDate,
       notificationDetails,
-      androidAllowWhileIdle: true,
+      // Nuevos parámetros requeridos para la versión 18.0.1
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
