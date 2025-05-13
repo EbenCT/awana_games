@@ -1,12 +1,13 @@
-// lib/config/routes.dart (actualizado)
+// lib/config/routes.dart (con pantalla de prueba de notificaciones)
 import 'package:flutter/material.dart';
 import '../screens/home_screen.dart';
 import '../screens/score_counter_screen.dart';
 import '../screens/standings_screen.dart';
 import '../screens/game_rounds_screen.dart';
 import '../screens/game_config_screen.dart';
-import '../screens/onboarding_screen.dart'; // Añadido
-import '../screens/schedule_settings_screen.dart'; // Añadido
+import '../screens/onboarding_screen.dart';
+import '../screens/schedule_settings_screen.dart';
+import '../screens/notification_test_screen.dart'; // Añadido
 
 class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -23,7 +24,7 @@ class AppRoutes {
             return SlideTransition(position: offsetAnimation, child: child);
           },
         );
-      case '/onboarding': // Nueva ruta para onboarding
+      case '/onboarding':
         return PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => const OnboardingScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -35,9 +36,21 @@ class AppRoutes {
             return SlideTransition(position: offsetAnimation, child: child);
           },
         );
-      case '/schedule_settings': // Nueva ruta para la pantalla de programación
+      case '/schedule_settings':
         return PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => const ScheduleSettingsScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeOut;
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var offsetAnimation = animation.drive(tween);
+            return SlideTransition(position: offsetAnimation, child: child);
+          },
+        );
+      case '/notification_test': // Nueva ruta para probar notificaciones
+        return PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const NotificationTestScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
@@ -94,7 +107,6 @@ class AppRoutes {
           },
         );
       default:
-        // Si la ruta no está definida, muestra una página de error
         return MaterialPageRoute(
           builder: (_) => Scaffold(
             body: Center(
@@ -107,8 +119,9 @@ class AppRoutes {
 
   static final Map<String, WidgetBuilder> routes = {
     '/': (context) => const HomeScreen(),
-    '/onboarding': (context) => const OnboardingScreen(), // Añadida
-    '/schedule_settings': (context) => const ScheduleSettingsScreen(), // Añadida
+    '/onboarding': (context) => const OnboardingScreen(),
+    '/schedule_settings': (context) => const ScheduleSettingsScreen(),
+    '/notification_test': (context) => const NotificationTestScreen(), // Añadida
     '/game_config': (context) => const GameConfigScreen(),
     '/score': (context) => const ScoreCounterScreen(),
     '/standings': (context) => const StandingsScreen(),

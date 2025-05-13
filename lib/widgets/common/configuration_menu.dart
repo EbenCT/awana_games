@@ -1,12 +1,12 @@
-// lib/widgets/common/configuration_menu.dart (actualizado)
+// lib/widgets/common/configuration_menu.dart (actualizado con prueba de notificaciones)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../providers/teams_provider.dart';
 import '../../providers/game_provider.dart';
-import '../../providers/schedule_provider.dart'; // Añadido
+import '../../providers/schedule_provider.dart';
 import '../../screens/team_config_screen.dart';
-import '../common/theme_toggle.dart';// Añadido
+import '../common/theme_toggle.dart';
 
 class ConfigurationMenu extends StatelessWidget {
   const ConfigurationMenu({Key? key}) : super(key: key);
@@ -23,7 +23,7 @@ class ConfigurationMenu extends StatelessWidget {
   void _showConfigMenu(BuildContext context) {
     final teamsProvider = Provider.of<TeamsProvider>(context, listen: false);
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
-    final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false); // Añadido
+    final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     showModalBottomSheet(
@@ -68,7 +68,7 @@ class ConfigurationMenu extends StatelessWidget {
                   const ThemeToggle(),
                   const Divider(),
                   
-                  // Nueva opción para configurar programación
+                  // Opción para configurar programación
                   ListTile(
                     leading: CircleAvatar(
                       backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
@@ -87,6 +87,23 @@ class ConfigurationMenu extends StatelessWidget {
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, '/schedule_settings');
+                    },
+                  ),
+                  
+                  // NUEVA OPCIÓN: Probar notificaciones
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.blue.withOpacity(0.2),
+                      child: const Icon(
+                        Icons.bug_report,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    title: const Text('Probar Notificaciones'),
+                    subtitle: const Text('Verificar que funcionan correctamente'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/notification_test');
                     },
                   ),
                   
@@ -171,7 +188,6 @@ class ConfigurationMenu extends StatelessWidget {
     );
   }
 
-  // El resto del código permanece igual...
   void _showResetConfirmationDialog(
     BuildContext context,
     TeamsProvider teamsProvider,
