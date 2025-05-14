@@ -98,7 +98,7 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
         }
       } else {
         // Cancelar notificaciones existentes
-        await NotificationService.cancelGameNotification();
+        //await NotificationService.cancelGameNotification();
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

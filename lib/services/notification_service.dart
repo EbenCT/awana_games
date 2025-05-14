@@ -1,23 +1,28 @@
-// lib/services/notification_service.dart (con zona horaria automática)
+// lib/services/notification_service.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:flutter_native_timezone/flutter_native_timezone.dart'; // Nuevo paquete
+import 'dart:io' show Platform;
+import 'package:intl/intl.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin = 
       FlutterLocalNotificationsPlugin();
       
   static const int _gameNotificationId = 1;
+  static bool _initialized = false;
 
   // Inicializar el servicio de notificaciones
   static Future<void> initialize() async {
+    if (_initialized) return;
+    
     // Inicializar zonas horarias
     tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('America/La_Paz'));
     
-    // Obtener la zona horaria del dispositivo automáticamente
-    await _configureLocalTimeZone();
+    debugPrint('Zona horaria configurada: ${tz.local.name}');
+    debugPrint('Offset actual: ${DateTime.now().timeZoneOffset.inHours}h ${DateTime.now().timeZoneOffset.inMinutes % 60}m');
     
     // Configuración para Android
     const AndroidInitializationSettings androidSettings = 
@@ -41,191 +46,222 @@ class NotificationService {
     await _notificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        // Este callback se dispara cuando el usuario toca la notificación
         debugPrint('Notificación tocada: ${details.payload}');
       },
     );
     
-    // Verificar y solicitar permisos en iOS
-    await _requestPermissions();
+    _initialized = true;
+    
+    // Verificar notificaciones pendientes
+    final pendingNotifications = await _notificationsPlugin.pendingNotificationRequests();
+    debugPrint('Notificaciones pendientes: ${pendingNotifications.length}');
   }
   
-  // Configurar zona horaria local basada en el dispositivo
-  static Future<void> _configureLocalTimeZone() async {
+  // Programar una notificación para pruebas
+  static Future<void> scheduleNotificationForTesting() async {
+    if (!_initialized) await initialize();
+    
     try {
-      // Obtener la zona horaria del dispositivo
-      final String timeZoneName = await FlutterNativeTimezone.getLocalTimezone();
+      // Cancelar notificaciones existentes
+      await _notificationsPlugin.cancel(_gameNotificationId);
       
-      // Establecer la zona horaria como la zona horaria local
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      // Crear una fecha 1 minuto en el futuro
+      final now = tz.TZDateTime.now(tz.local);
+      final scheduledTime = now.add(const Duration(minutes: 1));
       
-      debugPrint('Zona horaria configurada automáticamente: $timeZoneName');
-    } catch (e) {
-      // En caso de error, usar una zona horaria por defecto
-      debugPrint('Error al configurar zona horaria: $e');
-      debugPrint('Usando zona horaria por defecto: America/La_Paz');
+      debugPrint('Programando notificación para: ${scheduledTime.toString()}');
       
-      // Establecer Bolivia como zona horaria de respaldo
-      tz.setLocalLocation(tz.getLocation('America/La_Paz'));
-    }
-  }
-  
-  // Solicitar permisos explícitamente (principalmente para iOS)
-  static Future<void> _requestPermissions() async {
-    // Para Android 13+ (API 33+)
-    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-        _notificationsPlugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-            
-    if (androidImplementation != null) {
-      try {
-        // Usar el método correcto según la versión disponible
-        final bool? granted = await androidImplementation.requestNotificationsPermission();
-        debugPrint('Permisos de notificación Android concedidos: $granted');
-      } catch (e) {
-        // Si el método no está disponible, podría ser una versión anterior de Android
-        // o una versión anterior del plugin
-        debugPrint('Error al solicitar permisos de Android: $e');
-      }
-    }
-        
-    // Para iOS
-    final IOSFlutterLocalNotificationsPlugin? iosImplementation =
-        _notificationsPlugin.resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
-            
-    if (iosImplementation != null) {
-      await iosImplementation.requestPermissions(
-        alert: true,
-        badge: true,
-        sound: true,
+      // Detalles de Android (simplificados)
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'game_time_channel',
+        'Tiempo de Juegos',
+        channelDescription: 'Notificaciones para recordar el tiempo de juegos',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
       );
+      
+      // Detalles de iOS
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      
+      // Configuración general
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+      
+      // Textos de la notificación
+      final title = '¡Tiempo de Juego! (Prueba)';
+      final body = 'Notificación de prueba programada para 1 minuto después.\n'
+                  'Hora programada: ${DateFormat('HH:mm:ss').format(
+                    DateTime(
+                      scheduledTime.year,
+                      scheduledTime.month,
+                      scheduledTime.day,
+                      scheduledTime.hour,
+                      scheduledTime.minute,
+                      scheduledTime.second,
+                    )
+                  )}';
+      
+      // Programar la notificación
+      await _notificationsPlugin.zonedSchedule(
+        _gameNotificationId,
+        title,
+        body,
+        scheduledTime,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      
+      // Verificar si se programó exitosamente
+      final pendingNotifications = await _notificationsPlugin.pendingNotificationRequests();
+      
+      if (pendingNotifications.any((notification) => notification.id == _gameNotificationId)) {
+        debugPrint('Notificación programada exitosamente');
+      } else {
+        debugPrint('⚠️ La notificación NO fue programada correctamente');
+      }
+    } catch (e) {
+      debugPrint('Error al programar notificación: $e');
     }
   }
   
-  // Programar una notificación para una fecha y hora específicas (para pruebas)
-  static Future<void> scheduleNotificationForTesting(tz.TZDateTime scheduledDate) async {
-    // Cancelar notificaciones existentes con el mismo ID
-    await _notificationsPlugin.cancel(_gameNotificationId);
-    
-    // Configurar detalles de Android
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'game_time_channel',
-      'Tiempo de Juegos',
-      channelDescription: 'Notificaciones para recordar el tiempo de juegos',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-      color: Color(0xFF6A1B9A), // Color principal de la app (violeta)
-      enableLights: true,
-      enableVibration: true,
-      playSound: true,
-    );
-    
-    // Configurar detalles de iOS
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      sound: 'default',
-    );
-    
-    // Configuración general
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-    
-    // Programar la notificación
-    await _notificationsPlugin.zonedSchedule(
-      _gameNotificationId,
-      '¡Es tiempo de jugar!',
-      'Ingresa a la app para comenzar tu tiempo de juegos (Prueba)',
-      scheduledDate,
-      notificationDetails,
-      // Nuevos parámetros requeridos para la versión 18.0.1
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: 'game_time_test',
-    );
-    
-    // Mostrar la zona horaria actual
-    final currentTz = tz.local;
-    
-    debugPrint('Zona horaria actual: ${currentTz.name}');
-    debugPrint('Hora local: ${DateTime.now()}');
-    debugPrint('Notificación de prueba programada para: $scheduledDate');
-  }
-  
-  // Programar una notificación semanal que se repite en un día y hora específicos
+  // Programar una notificación semanal
   static Future<void> scheduleWeeklyNotification({
     required int dayOfWeek, // 1 = lunes, 7 = domingo
-    required int hour,      // 0-23
-    required int minute,    // 0-59
+    required int hour,
+    required int minute,
   }) async {
-    // Cancelar notificaciones existentes con el mismo ID
-    await _notificationsPlugin.cancel(_gameNotificationId);
+    if (!_initialized) await initialize();
     
-    // Configurar detalles de Android
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'game_time_channel',
-      'Tiempo de Juegos',
-      channelDescription: 'Notificaciones para recordar el tiempo de juegos',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-      color: Color(0xFF6A1B9A), // Color principal de la app (violeta)
-      enableLights: true,
-      enableVibration: true,
-      playSound: true,
-    );
-    
-    // Configurar detalles de iOS
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      sound: 'default',
-    );
-    
-    // Configuración general
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-    
-    // Calcular la fecha y hora para la próxima ocurrencia
-    final now = tz.TZDateTime.now(tz.local);
-    final scheduledDate = _nextInstanceOfDay(dayOfWeek, hour, minute);
-    
-    // Programar la notificación
-    await _notificationsPlugin.zonedSchedule(
-      _gameNotificationId,
-      '¡Es tiempo de jugar!',
-      'Ingresa a la app para comenzar tu tiempo de juegos',
-      scheduledDate,
-      notificationDetails,
-      // Nuevos parámetros requeridos para la versión 18.0.1
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-      payload: 'game_time',
-    );
-    
-    // Mostrar información para depuración
-    final currentTz = tz.local;
-    debugPrint('Zona horaria actual: ${currentTz.name}');
-    debugPrint('Hora local: ${DateTime.now()}');
-    debugPrint('Notificación programada para: $scheduledDate');
+    try {
+      // Cancelar notificaciones existentes
+      await _notificationsPlugin.cancel(_gameNotificationId);
+      
+      // Calcular próxima ocurrencia
+      final scheduledDate = _nextInstanceOfDay(dayOfWeek, hour, minute);
+      
+      // Nombres de los días
+      final days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      final dayName = days[dayOfWeek - 1];
+      
+      debugPrint('Programando notificación semanal para $dayName a las ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}');
+      debugPrint('Primera ocurrencia: $scheduledDate');
+      
+      // Detalles de Android
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'game_time_channel',
+        'Tiempo de Juegos',
+        channelDescription: 'Notificaciones para recordar el tiempo de juegos',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+      
+      // Detalles de iOS
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      
+      // Configuración general
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+      
+      // Textos para la notificación
+      final title = '¡Es tiempo de jugar!';
+      final body = 'Ingresa a la app para comenzar tu tiempo de juegos.\n'
+                  'Programado cada $dayName a las ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+      
+      // Programar la notificación semanal
+      await _notificationsPlugin.zonedSchedule(
+        _gameNotificationId,
+        title,
+        body,
+        scheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+      
+      // Verificar si se programó correctamente
+      final pendingNotifications = await _notificationsPlugin.pendingNotificationRequests();
+      
+      if (pendingNotifications.any((notification) => notification.id == _gameNotificationId)) {
+        debugPrint('Notificación semanal programada exitosamente');
+      } else {
+        debugPrint('⚠️ La notificación semanal NO fue programada correctamente');
+      }
+    } catch (e) {
+      debugPrint('Error al programar notificación semanal: $e');
+    }
   }
   
-  // Calcular la fecha y hora de la próxima ocurrencia
+  // Mostrar una notificación inmediata
+  static Future<void> showImmediateNotification() async {
+    if (!_initialized) await initialize();
+    
+    try {
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'test_channel',
+        'Prueba de Notificaciones',
+        channelDescription: 'Canal para pruebas',
+        importance: Importance.max,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+      );
+      
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+      
+      // Información para el texto
+      final now = DateTime.now();
+      final tzName = tz.local.name;
+      final nowFormatted = DateFormat('HH:mm:ss').format(now);
+      
+      // Mostrar la notificación
+      await _notificationsPlugin.show(
+        99, // ID diferente
+        'Notificación Inmediata',
+        'Esta es una notificación de prueba.\n'
+        'Hora local: $nowFormatted\n'
+        'Zona horaria: $tzName',
+        notificationDetails,
+      );
+      
+      debugPrint('Notificación inmediata enviada exitosamente');
+    } catch (e) {
+      debugPrint('Error al mostrar notificación inmediata: $e');
+    }
+  }
+  
+  // Calcular próxima ocurrencia de un día
   static tz.TZDateTime _nextInstanceOfDay(int day, int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    
     tz.TZDateTime scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -235,15 +271,14 @@ class NotificationService {
       minute,
     );
     
-    // Si el día actual es mayor que el día de la semana deseado,
-    // avanzamos a la próxima semana
-    while (scheduledDate.weekday != day) {
+    // Si ya pasó la hora hoy, programamos para mañana
+    if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
     
-    // Si la fecha ya pasó hoy, programamos para la próxima semana
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 7));
+    // Ajustar al día de la semana correcto
+    while (scheduledDate.weekday != day) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
     
     return scheduledDate;
@@ -251,16 +286,27 @@ class NotificationService {
   
   // Cancelar todas las notificaciones
   static Future<void> cancelAllNotifications() async {
-    await _notificationsPlugin.cancelAll();
+    try {
+      await _notificationsPlugin.cancelAll();
+      debugPrint('Todas las notificaciones canceladas');
+    } catch (e) {
+      debugPrint('Error al cancelar notificaciones: $e');
+    }
   }
   
-  // Cancelar una notificación específica
+  // Cancelar notificación de juego
   static Future<void> cancelGameNotification() async {
-    await _notificationsPlugin.cancel(_gameNotificationId);
+    try {
+      await _notificationsPlugin.cancel(_gameNotificationId);
+      debugPrint('Notificación de juego cancelada');
+    } catch (e) {
+      debugPrint('Error al cancelar notificación de juego: $e');
+    }
   }
   
-  // Verificar si hay notificaciones activas
+  // Obtener notificaciones pendientes
   static Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    if (!_initialized) await initialize();
     return await _notificationsPlugin.pendingNotificationRequests();
   }
 }
