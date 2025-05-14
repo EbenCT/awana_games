@@ -1,4 +1,4 @@
-package com.example.awana_games
+package com.ebenct.playtime
 
 import io.flutter.embedding.android.FlutterActivity
 
