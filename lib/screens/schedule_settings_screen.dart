@@ -1,9 +1,10 @@
-// lib/screens/schedule_settings_screen.dart
+// lib/screens/schedule_settings_screen.dart (con verificación de permisos)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/schedule_provider.dart';
 import '../services/notification_service.dart';
+import '../widgets/common/permission_dialog.dart';
 
 class ScheduleSettingsScreen extends StatefulWidget {
   const ScheduleSettingsScreen({Key? key}) : super(key: key);
@@ -22,6 +23,7 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
   late TimeOfDay _selectedTime;
   bool _notificationsEnabled = true;
   bool _isSaving = false;
+  bool _hasPermissions = false;
   
   @override
   void initState() {
@@ -32,6 +34,17 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
     _selectedDay = scheduleProvider.day;
     _selectedTime = scheduleProvider.time;
     _notificationsEnabled = scheduleProvider.notificationsEnabled;
+    
+    // Verificar permisos al inicio
+    _checkPermissions();
+  }
+  
+  // Verificar permisos de notificación
+  Future<void> _checkPermissions() async {
+    final hasPermissions = await NotificationService.checkPermissions();
+    setState(() {
+      _hasPermissions = hasPermissions;
+    });
   }
   
   void _showTimePicker() async {
@@ -72,6 +85,46 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
     });
     
     try {
+      // VERIFICAR PERMISOS SI LAS NOTIFICACIONES ESTÁN HABILITADAS
+      if (_notificationsEnabled) {
+        if (!_hasPermissions) {
+          debugPrint('🔔 Sin permisos, solicitando...');
+          final granted = await PermissionDialog.ensureNotificationPermissions(
+            context, 
+            showDialog: true
+          );
+          
+          if (!granted!) {
+            // Si no se otorgan permisos, deshabilitar notificaciones automáticamente
+            setState(() {
+              _notificationsEnabled = false;
+            });
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.white),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text('Configuración guardada sin notificaciones. Puedes activarlas después otorgando permisos.'),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
+          } else {
+            setState(() {
+              _hasPermissions = true;
+            });
+          }
+        }
+      }
+      
       // Guardar la configuración en el provider
       final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
       await scheduleProvider.setSchedule(_selectedDay, _selectedTime);
@@ -79,10 +132,10 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
       // Actualizar el estado de las notificaciones
       await scheduleProvider.toggleNotifications(_notificationsEnabled);
       
-      if (_notificationsEnabled) {
+      if (_notificationsEnabled && _hasPermissions) {
         // Programar la notificación
         final dayOfWeek = _days.indexOf(_selectedDay) + 1; // 1 = lunes, 7 = domingo
-        await NotificationService.scheduleWeeklyNotification(
+        final success = await NotificationService.scheduleWeeklyNotification(
           dayOfWeek: dayOfWeek,
           hour: _selectedTime.hour,
           minute: _selectedTime.minute,
@@ -90,21 +143,43 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Notificación programada correctamente'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(
+                    success ? Icons.check_circle : Icons.warning,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      success 
+                          ? 'Notificaciones programadas correctamente'
+                          : 'Configuración guardada, pero verifica los permisos de notificación'
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: success ? Colors.green : Colors.orange,
+              duration: const Duration(seconds: 3),
             ),
           );
         }
-      } else {
+      } else if (!_notificationsEnabled) {
         // Cancelar notificaciones existentes
-        //await NotificationService.cancelGameNotification();
+        await NotificationService.cancelWeeklyNotifications();
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Notificaciones desactivadas'),
-              backgroundColor: Colors.orange,
+              content: Row(
+                children: [
+                  Icon(Icons.notifications_off, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Notificaciones desactivadas'),
+                ],
+              ),
+              backgroundColor: Colors.blue,
             ),
           );
         }
@@ -117,8 +192,16 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
       debugPrint('Error al guardar la programación: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al guardar la configuración'),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Error al guardar la configuración: $e'),
+                ),
+              ],
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -169,6 +252,66 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // NUEVA SECCIÓN: Estado de permisos
+            Card(
+              elevation: 4,
+              color: _hasPermissions ? Colors.green[50] : Colors.orange[50],
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _hasPermissions ? Icons.check_circle : Icons.warning,
+                          color: _hasPermissions ? Colors.green[700] : Colors.orange[700],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Estado de Permisos',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _hasPermissions ? Colors.green[700] : Colors.orange[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _hasPermissions 
+                          ? 'Permisos de notificación otorgados ✅'
+                          : 'Permisos de notificación necesarios ⚠️',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    if (!_hasPermissions) ...[
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final granted = await PermissionDialog.ensureNotificationPermissions(
+                            context, 
+                            showDialog: true
+                          );
+                          setState(() {
+                            _hasPermissions = granted!;
+                          });
+                        },
+                        icon: const Icon(Icons.security),
+                        label: const Text('Solicitar Permisos'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[700],
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
             // Tarjeta principal
             Card(
               elevation: 4,
@@ -310,23 +453,27 @@ class _ScheduleSettingsScreenState extends State<ScheduleSettingsScreen> {
                               ),
                             ),
                             Text(
-                              'Recibir recordatorios semanales',
+                              _hasPermissions 
+                                  ? 'Recibir recordatorios semanales'
+                                  : 'Requiere permisos (ver arriba)',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: isDarkMode 
-                                    ? Colors.grey[400] 
-                                    : Colors.grey[700],
+                                color: _hasPermissions 
+                                    ? (isDarkMode ? Colors.grey[400] : Colors.grey[700])
+                                    : Colors.orange[700],
                               ),
                             ),
                           ],
                         ),
                         Switch(
-                          value: _notificationsEnabled,
-                          onChanged: (value) {
-                            setState(() {
-                              _notificationsEnabled = value;
-                            });
-                          },
+                          value: _notificationsEnabled && _hasPermissions,
+                          onChanged: _hasPermissions 
+                              ? (value) {
+                                  setState(() {
+                                    _notificationsEnabled = value;
+                                  });
+                                }
+                              : null,
                           activeColor: Theme.of(context).colorScheme.primary,
                         ),
                       ],

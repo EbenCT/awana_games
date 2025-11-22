@@ -89,7 +89,7 @@ class ConfigurationMenu extends StatelessWidget {
                       Navigator.pushNamed(context, '/schedule_settings');
                     },
                   ),
-                  /*
+                  
                   // NUEVA OPCIÓN: Probar notificaciones
                   ListTile(
                     leading: CircleAvatar(
@@ -106,7 +106,9 @@ class ConfigurationMenu extends StatelessWidget {
                       Navigator.pushNamed(context, '/notification_test');
                     },
                   ),
-                  */
+                  
+                  const Divider(),
+                  
                   // Opciones de configuración
                   ListTile(
                     leading: CircleAvatar(

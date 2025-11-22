@@ -1,10 +1,11 @@
-// lib/screens/onboarding_screen.dart (with simplified background)
+// lib/screens/onboarding_screen.dart (con solicitud de permisos)
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/notification_service.dart';
 import '../widgets/common/primary_button.dart';
+import '../widgets/common/permission_dialog.dart';
 import '../providers/schedule_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -100,39 +101,134 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
     });
 
     try {
-      // Guardar en provider
-      final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
-      scheduleProvider.setSchedule(_selectedDay, _selectedTime);
+      // PASO 1: Solicitar permisos de notificación ANTES de programar
+      debugPrint('🔔 Solicitando permisos de notificación...');
+      final hasPermissions = await PermissionDialog.ensureNotificationPermissions(
+        context, 
+        showDialog: true
+      );
       
-      // Guardar en SharedPreferences que el onboarding se completó
+      if (!hasPermissions!) {
+        // Si no se otorgaron permisos, mostrar diálogo informativo
+        if (mounted) {
+          await PermissionDialog.showPermissionDeniedDialog(context);
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+      
+      // PASO 2: Guardar en provider
+      final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
+      await scheduleProvider.setSchedule(_selectedDay, _selectedTime);
+      
+      // PASO 3: Guardar en SharedPreferences que el onboarding se completó
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('onboarding_completed', true);
       
-      // Programar la notificación
-      final dayOfWeek = _days.indexOf(_selectedDay) + 1; // 1 = lunes, 7 = domingo
-      await NotificationService.scheduleWeeklyNotification(
-        dayOfWeek: dayOfWeek,
-        hour: _selectedTime.hour,
-        minute: _selectedTime.minute,
-      );
+      // PASO 4: Programar las notificaciones (solo si tenemos permisos)
+      if (hasPermissions) {
+        debugPrint('🔔 Programando notificaciones semanales...');
+        final dayOfWeek = _days.indexOf(_selectedDay) + 1; // 1 = lunes, 7 = domingo
+        final success = await NotificationService.scheduleWeeklyNotification(
+          dayOfWeek: dayOfWeek,
+          hour: _selectedTime.hour,
+          minute: _selectedTime.minute,
+        );
+        
+        if (success) {
+          debugPrint('✅ Notificaciones programadas exitosamente');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Recordatorios configurados para ${scheduleProvider.day} a las ${_selectedTime.format(context)}',
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          debugPrint('⚠️ Error al programar notificaciones');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.white),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Configuración guardada, pero revisa los permisos de notificación'),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+      } else {
+        debugPrint('⚠️ Sin permisos, solo guardando configuración');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.info, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Configuración guardada. Puedes activar notificaciones después en Configuración.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.blue,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
       
+      // PASO 5: Navegar a la pantalla principal
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/');
       }
+      
     } catch (e) {
-      debugPrint('Error al guardar la programación: $e');
+      debugPrint('❌ Error al guardar la programación: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al guardar la programación'),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Error al guardar la configuración: $e'),
+                ),
+              ],
+            ),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -148,7 +244,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
     return Scaffold(
       body: Stack(
         children: [
-          // FONDO SIMPLIFICADO - Reemplazamos las animaciones complejas por un gradiente estático
+          // FONDO SIMPLIFICADO
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -464,31 +560,50 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                                 
                                 const SizedBox(height: 16),
                                 
-                                // Información adicional
+                                // NUEVA SECCIÓN: Información sobre permisos
                                 Container(
                                   margin: const EdgeInsets.only(top: 8),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                    color: Colors.blue.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.blue.withOpacity(0.3),
+                                      width: 1,
+                                    ),
                                   ),
-                                  child: Row(
+                                  child: Column(
                                     children: [
-                                      Icon(
-                                        Icons.info_outline,
-                                        color: Theme.of(context).colorScheme.primary,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          'Recibirás notificaciones semanales para recordarte tu tiempo de juegos',
-                                          style: TextStyle(
-                                            color: isDarkMode
-                                                ? Colors.white.withOpacity(0.9)
-                                                : Colors.black87,
-                                            fontSize: 14,
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.notifications_active,
+                                            color: Colors.blue[700],
+                                            size: 24,
                                           ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              'Te pediremos permisos para notificaciones',
+                                              style: TextStyle(
+                                                color: isDarkMode
+                                                    ? Colors.white.withOpacity(0.9)
+                                                    : Colors.black87,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Solo enviaremos recordatorios según tu programación. Puedes cambiar esto en cualquier momento.',
+                                        style: TextStyle(
+                                          color: isDarkMode
+                                              ? Colors.white.withOpacity(0.7)
+                                              : Colors.black54,
+                                          fontSize: 12,
                                         ),
                                       ),
                                     ],
@@ -514,9 +629,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 3,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 3,
+                                      ),
+                                      SizedBox(width: 16),
+                                      Text(
+                                        'Configurando...',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
